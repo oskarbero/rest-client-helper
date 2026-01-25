@@ -68,9 +68,10 @@ export function UrlBar({ url, method, queryParams, onUrlChange, onMethodChange, 
           disabled={isLoading}
         />
         <button
-          className="send-button"
+          className={`send-button ${isLoading ? 'loading' : ''}`}
           onClick={onSend}
           disabled={isLoading || !url}
+          title="Send Request (Ctrl+Enter)"
         >
           {isLoading ? 'Sending...' : 'Send'}
         </button>

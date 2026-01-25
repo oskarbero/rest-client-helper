@@ -14,3 +14,10 @@ export {
   tokenizeJson, 
   getHighlightedTokens 
 } from './response-parser';
+export {
+  saveRequest,
+  loadRequest,
+  listRequests,
+  deleteRequest,
+  renameRequest
+} from './storage';

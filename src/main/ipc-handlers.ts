@@ -1,7 +1,8 @@
 import { ipcMain, app } from 'electron';
 import { sendRequest } from '../core/http-client';
 import { saveState, loadState } from '../core/state-persistence';
-import { HttpRequest, HttpResponse } from '../core/types';
+import { saveRequest, loadRequest, listRequests, deleteRequest, renameRequest } from '../core/storage';
+import { HttpRequest, HttpResponse, SavedRequest } from '../core/types';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -23,24 +24,24 @@ export function registerIpcHandlers(): void {
     return loadState(userDataPath);
   });
 
-  // Placeholder handlers for future milestones (collections)
-  ipcMain.handle('request:save', async (_event, _request: unknown) => {
-    // Will be implemented in Milestone 7
-    return { success: false, message: 'Not implemented yet' };
+  // Collection handlers
+  ipcMain.handle('collection:save', async (_event, name: string, request: HttpRequest, existingId?: string): Promise<SavedRequest> => {
+    return saveRequest(userDataPath, name, request, existingId);
   });
 
-  ipcMain.handle('request:load', async (_event, _id: string) => {
-    // Will be implemented in Milestone 7
-    return null;
+  ipcMain.handle('collection:load', async (_event, id: string): Promise<SavedRequest | null> => {
+    return loadRequest(userDataPath, id);
   });
 
-  ipcMain.handle('request:list', async () => {
-    // Will be implemented in Milestone 7
-    return [];
+  ipcMain.handle('collection:list', async (): Promise<SavedRequest[]> => {
+    return listRequests(userDataPath);
   });
 
-  ipcMain.handle('request:delete', async (_event, _id: string) => {
-    // Will be implemented in Milestone 7
-    return { success: false, message: 'Not implemented yet' };
+  ipcMain.handle('collection:delete', async (_event, id: string): Promise<boolean> => {
+    return deleteRequest(userDataPath, id);
+  });
+
+  ipcMain.handle('collection:rename', async (_event, id: string, newName: string): Promise<SavedRequest | null> => {
+    return renameRequest(userDataPath, id, newName);
   });
 }

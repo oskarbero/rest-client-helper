@@ -25,10 +25,10 @@ todos:
     status: completed
   - id: milestone-7-collections
     content: "MILESTONE 7 - Collections: Save/load requests to local files, collections sidebar. TEST: Save a request and reload it."
-    status: pending
+    status: completed
   - id: milestone-8-polish
     content: "MILESTONE 8 - Polish: Final styling, UX improvements. TEST: Full workflow feels smooth."
-    status: pending
+    status: completed
 isProject: false
 ---
 

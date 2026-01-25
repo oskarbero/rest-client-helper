@@ -3,13 +3,17 @@ import type { HttpRequest, HttpResponse, SavedRequest } from '../core/types';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
+  // HTTP requests
   sendRequest: (request: HttpRequest) => Promise<HttpResponse>;
+  // Session state persistence
   saveState: (request: HttpRequest) => Promise<void>;
   loadState: () => Promise<HttpRequest>;
-  saveRequest: (request: SavedRequest) => Promise<{ success: boolean; message?: string }>;
-  loadRequest: (id: string) => Promise<SavedRequest | null>;
-  listRequests: () => Promise<SavedRequest[]>;
-  deleteRequest: (id: string) => Promise<{ success: boolean; message?: string }>;
+  // Collections (saved requests)
+  saveToCollection: (name: string, request: HttpRequest, existingId?: string) => Promise<SavedRequest>;
+  loadFromCollection: (id: string) => Promise<SavedRequest | null>;
+  listCollection: () => Promise<SavedRequest[]>;
+  deleteFromCollection: (id: string) => Promise<boolean>;
+  renameInCollection: (id: string, newName: string) => Promise<SavedRequest | null>;
 }
 
 // Expose protected methods to the renderer process
@@ -17,8 +21,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendRequest: (request: HttpRequest) => ipcRenderer.invoke('request:send', request),
   saveState: (request: HttpRequest) => ipcRenderer.invoke('state:save', request),
   loadState: () => ipcRenderer.invoke('state:load'),
-  saveRequest: (request: SavedRequest) => ipcRenderer.invoke('request:save', request),
-  loadRequest: (id: string) => ipcRenderer.invoke('request:load', id),
-  listRequests: () => ipcRenderer.invoke('request:list'),
-  deleteRequest: (id: string) => ipcRenderer.invoke('request:delete', id),
+  saveToCollection: (name: string, request: HttpRequest, existingId?: string) => 
+    ipcRenderer.invoke('collection:save', name, request, existingId),
+  loadFromCollection: (id: string) => ipcRenderer.invoke('collection:load', id),
+  listCollection: () => ipcRenderer.invoke('collection:list'),
+  deleteFromCollection: (id: string) => ipcRenderer.invoke('collection:delete', id),
+  renameInCollection: (id: string, newName: string) => ipcRenderer.invoke('collection:rename', id, newName),
 } as ElectronAPI);
