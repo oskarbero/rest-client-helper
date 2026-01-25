@@ -55,6 +55,7 @@ function App() {
           <UrlBar
             url={request.url}
             method={request.method}
+            queryParams={request.queryParams}
             onUrlChange={handleUrlChange}
             onMethodChange={handleMethodChange}
             onSend={handleSend}

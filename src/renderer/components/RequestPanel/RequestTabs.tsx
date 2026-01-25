@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HttpRequest, KeyValuePair } from '../../../core/types';
 import { HeadersTab } from './HeadersTab';
+import { ParamsTab } from './ParamsTab';
 
 type TabId = 'params' | 'headers' | 'body' | 'auth';
 
@@ -22,6 +23,10 @@ export function RequestTabs({ request, onRequestChange }: RequestTabsProps) {
     onRequestChange({ ...request, headers });
   };
 
+  const handleParamsChange = (queryParams: KeyValuePair[]) => {
+    onRequestChange({ ...request, queryParams });
+  };
+
   // Count enabled items for badges
   const enabledHeadersCount = request.headers.filter(h => h.enabled && h.key).length;
   const enabledParamsCount = request.queryParams.filter(p => p.enabled && p.key).length;
@@ -38,11 +43,7 @@ export function RequestTabs({ request, onRequestChange }: RequestTabsProps) {
       case 'headers':
         return <HeadersTab headers={request.headers} onChange={handleHeadersChange} />;
       case 'params':
-        return (
-          <div className="tab-placeholder">
-            Query Params tab coming in Milestone 3
-          </div>
-        );
+        return <ParamsTab params={request.queryParams} onChange={handleParamsChange} />;
       case 'body':
         return (
           <div className="tab-placeholder">
