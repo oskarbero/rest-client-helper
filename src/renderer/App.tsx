@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UrlBar } from './components/RequestPanel/UrlBar';
+import { RequestTabs } from './components/RequestPanel/RequestTabs';
 import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { HttpRequest, HttpResponse, HttpMethod, createEmptyRequest } from '../core/types';
 
@@ -14,6 +15,10 @@ function App() {
 
   const handleMethodChange = (method: HttpMethod) => {
     setRequest((prev) => ({ ...prev, method }));
+  };
+
+  const handleRequestChange = (updatedRequest: HttpRequest) => {
+    setRequest(updatedRequest);
   };
 
   const handleSend = async () => {
@@ -54,6 +59,10 @@ function App() {
             onMethodChange={handleMethodChange}
             onSend={handleSend}
             isLoading={isLoading}
+          />
+          <RequestTabs
+            request={request}
+            onRequestChange={handleRequestChange}
           />
         </div>
         <div className="response-section">
