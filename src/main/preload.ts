@@ -4,6 +4,8 @@ import type { HttpRequest, HttpResponse, SavedRequest } from '../core/types';
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
   sendRequest: (request: HttpRequest) => Promise<HttpResponse>;
+  saveState: (request: HttpRequest) => Promise<void>;
+  loadState: () => Promise<HttpRequest>;
   saveRequest: (request: SavedRequest) => Promise<{ success: boolean; message?: string }>;
   loadRequest: (id: string) => Promise<SavedRequest | null>;
   listRequests: () => Promise<SavedRequest[]>;
@@ -13,6 +15,8 @@ export interface ElectronAPI {
 // Expose protected methods to the renderer process
 contextBridge.exposeInMainWorld('electronAPI', {
   sendRequest: (request: HttpRequest) => ipcRenderer.invoke('request:send', request),
+  saveState: (request: HttpRequest) => ipcRenderer.invoke('state:save', request),
+  loadState: () => ipcRenderer.invoke('state:load'),
   saveRequest: (request: SavedRequest) => ipcRenderer.invoke('request:save', request),
   loadRequest: (id: string) => ipcRenderer.invoke('request:load', id),
   listRequests: () => ipcRenderer.invoke('request:list'),

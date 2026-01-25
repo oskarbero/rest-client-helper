@@ -422,3 +422,101 @@ body {
   background-color: rgba(86, 156, 214, 0.1);
   border-color: var(--accent-blue);
 }
+
+/* Body Tab */
+.body-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.body-type-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.body-type-button {
+  padding: 6px 14px;
+  background-color: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.body-type-button:hover {
+  color: var(--text-primary);
+}
+
+.body-type-button.active {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.body-none-message {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.body-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.body-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.body-editor-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.body-format-button {
+  padding: 4px 10px;
+  background-color: transparent;
+  color: var(--accent-blue);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.body-format-button:hover {
+  background-color: rgba(86, 156, 214, 0.1);
+  border-color: var(--accent-blue);
+}
+
+.body-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.body-textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.body-textarea::placeholder {
+  color: var(--text-secondary);
+}

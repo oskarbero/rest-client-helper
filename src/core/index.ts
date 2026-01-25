@@ -4,3 +4,4 @@
 
 export * from './types';
 export { sendRequest } from './http-client';
+export { saveState, loadState } from './state-persistence';
