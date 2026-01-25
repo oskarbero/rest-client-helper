@@ -1,7 +1,13 @@
 import { ipcMain, app } from 'electron';
 import { sendRequest } from '../core/http-client';
 import { saveState, loadState } from '../core/state-persistence';
-import { saveRequest, loadRequest, listRequests, deleteRequest, renameRequest } from '../core/storage';
+import { 
+  saveRequest, 
+  loadRequest, 
+  listRequests, 
+  deleteRequest, 
+  renameRequest
+} from '../core/storage';
 import { HttpRequest, HttpResponse, SavedRequest } from '../core/types';
 
 /**

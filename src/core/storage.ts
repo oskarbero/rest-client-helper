@@ -51,11 +51,14 @@ export async function saveRequest(
   const now = new Date().toISOString();
   const id = existingId || generateId();
   
+  // Get existing request to preserve createdAt
+  const existing = existingId ? await loadRequest(basePath, existingId) : null;
+  
   const savedRequest: SavedRequest = {
     id,
     name,
     request,
-    createdAt: existingId ? (await loadRequest(basePath, existingId))?.createdAt || now : now,
+    createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
 
@@ -154,3 +157,4 @@ export async function renameRequest(
 
   return existing;
 }
+

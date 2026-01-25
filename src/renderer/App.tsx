@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { UrlBar } from './components/RequestPanel/UrlBar';
 import { RequestTabs } from './components/RequestPanel/RequestTabs';
 import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
-import { HttpRequest, HttpResponse, HttpMethod, SavedRequest, createEmptyRequest } from '../core/types';
+import { HttpRequest, HttpResponse, HttpMethod, SavedRequest, RecentRequest, createEmptyRequest } from '../core/types';
 
 // Toast notification type
 interface Toast {
@@ -22,6 +23,9 @@ function App() {
   // Collections state
   const [savedRequests, setSavedRequests] = useState<SavedRequest[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+
+  // Recent requests history
+  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
 
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -106,6 +110,10 @@ function App() {
     setRequest((prev) => ({ ...prev, url }));
   };
 
+  const handleQueryParamsChange = (queryParams: typeof request.queryParams) => {
+    setRequest((prev) => ({ ...prev, queryParams }));
+  };
+
   const handleMethodChange = (method: HttpMethod) => {
     setRequest((prev) => ({ ...prev, method }));
   };
@@ -123,8 +131,21 @@ function App() {
     try {
       const result = await window.electronAPI.sendRequest(request);
       setResponse(result);
+      
+      // Add to recent requests history
+      const recentEntry: RecentRequest = {
+        id: `recent-${Date.now()}`,
+        request: { ...request },
+        response: result,
+        timestamp: new Date().toISOString(),
+      };
+      setRecentRequests(prev => {
+        // Keep only last 20 requests, most recent first
+        const updated = [recentEntry, ...prev].slice(0, 20);
+        return updated;
+      });
     } catch (error) {
-      setResponse({
+      const errorResponse = {
         status: 0,
         statusText: 'Error',
         headers: {},
@@ -132,7 +153,17 @@ function App() {
         contentType: 'text/plain',
         duration: 0,
         size: 0,
-      });
+      };
+      setResponse(errorResponse);
+      
+      // Also add error requests to history
+      const recentEntry: RecentRequest = {
+        id: `recent-${Date.now()}`,
+        request: { ...request },
+        response: errorResponse,
+        timestamp: new Date().toISOString(),
+      };
+      setRecentRequests(prev => [recentEntry, ...prev].slice(0, 20));
     } finally {
       setIsLoading(false);
     }
@@ -203,6 +234,16 @@ function App() {
     setResponse(null);
   }, []);
 
+  const handleSelectFromRecent = useCallback((recentRequest: RecentRequest) => {
+    setRequest(recentRequest.request);
+    setCurrentRequestId(null);
+    setResponse(recentRequest.response || null);
+  }, []);
+
+  const handleClearRecent = useCallback(() => {
+    setRecentRequests([]);
+  }, []);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -212,37 +253,55 @@ function App() {
         </div>
       </header>
       <div className="app-body">
-        <aside className="app-sidebar">
-          <Collections
-            requests={savedRequests}
-            currentRequestId={currentRequestId}
-            onSelect={handleSelectFromCollection}
-            onSave={handleSaveToCollection}
-            onDelete={handleDeleteFromCollection}
-            onRename={handleRenameInCollection}
-            onNew={handleNewRequest}
-          />
-        </aside>
-        <main className="app-main">
-          <div className="request-section">
-            <UrlBar
-              url={request.url}
-              method={request.method}
-              queryParams={request.queryParams}
-              onUrlChange={handleUrlChange}
-              onMethodChange={handleMethodChange}
-              onSend={handleSend}
-              isLoading={isLoading}
-            />
-            <RequestTabs
-              request={request}
-              onRequestChange={handleRequestChange}
-            />
-          </div>
-          <div className="response-section">
-            <ResponseViewer response={response} isLoading={isLoading} />
-          </div>
-        </main>
+        <PanelGroup direction="horizontal" autoSaveId="main-layout">
+          <Panel defaultSize={20} minSize={15} maxSize={40} className="sidebar-panel">
+            <aside className="app-sidebar">
+              <Collections
+                requests={savedRequests}
+                recentRequests={recentRequests}
+                currentRequestId={currentRequestId}
+                onSelect={handleSelectFromCollection}
+                onSelectRecent={handleSelectFromRecent}
+                onSave={handleSaveToCollection}
+                onDelete={handleDeleteFromCollection}
+                onRename={handleRenameInCollection}
+                onNew={handleNewRequest}
+                onClearRecent={handleClearRecent}
+              />
+            </aside>
+          </Panel>
+          <PanelResizeHandle className="resize-handle-horizontal" />
+          <Panel minSize={50}>
+            <PanelGroup direction="vertical" autoSaveId="main-vertical">
+              <Panel defaultSize={50} minSize={20} className="request-panel">
+                <main className="app-main">
+                  <div className="request-section">
+                    <UrlBar
+                      url={request.url}
+                      method={request.method}
+                      queryParams={request.queryParams}
+                      onUrlChange={handleUrlChange}
+                      onMethodChange={handleMethodChange}
+                      onQueryParamsChange={handleQueryParamsChange}
+                      onSend={handleSend}
+                      isLoading={isLoading}
+                    />
+                    <RequestTabs
+                      request={request}
+                      onRequestChange={handleRequestChange}
+                    />
+                  </div>
+                </main>
+              </Panel>
+              <PanelResizeHandle className="resize-handle-vertical" />
+              <Panel minSize={20} className="response-panel-wrapper">
+                <div className="response-section">
+                  <ResponseViewer response={response} isLoading={isLoading} />
+                </div>
+              </Panel>
+            </PanelGroup>
+          </Panel>
+        </PanelGroup>
       </div>
 
       {/* Toast Notifications */}

@@ -74,6 +74,14 @@ export interface Collection {
   requests: SavedRequest[];
 }
 
+// Recent request entry (for history)
+export interface RecentRequest {
+  id: string;
+  request: HttpRequest;
+  response?: HttpResponse;
+  timestamp: string;
+}
+
 // Default/empty request for initialization
 export function createEmptyRequest(): HttpRequest {
   return {

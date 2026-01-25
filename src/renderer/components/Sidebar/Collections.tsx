@@ -1,25 +1,34 @@
 import React, { useState } from 'react';
-import { SavedRequest, HttpRequest } from '../../../core/types';
+import { SavedRequest, RecentRequest } from '../../../core/types';
+
+type SidebarTab = 'recent' | 'collections';
 
 interface CollectionsProps {
   requests: SavedRequest[];
+  recentRequests: RecentRequest[];
   currentRequestId: string | null;
   onSelect: (request: SavedRequest) => void;
+  onSelectRecent: (request: RecentRequest) => void;
   onSave: (name: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, newName: string) => void;
   onNew: () => void;
+  onClearRecent: () => void;
 }
 
 export function Collections({
   requests,
+  recentRequests,
   currentRequestId,
   onSelect,
+  onSelectRecent,
   onSave,
   onDelete,
   onRename,
   onNew,
+  onClearRecent,
 }: CollectionsProps) {
+  const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
   const [isNaming, setIsNaming] = useState(false);
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,6 +74,22 @@ export function Collections({
     });
   };
 
+  const formatRelativeTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay < 7) return `${diffDay}d ago`;
+    return formatDate(dateStr);
+  };
+
   const getMethodColor = (method: string) => {
     switch (method) {
       case 'GET': return 'method-get';
@@ -76,37 +101,68 @@ export function Collections({
     }
   };
 
-  return (
-    <div className="collections-sidebar">
-      <div className="collections-header">
-        <h2 className="collections-title">Collections</h2>
-        <div className="collections-actions">
-          <button
-            className="collections-action-btn"
-            onClick={onNew}
-            title="New Request"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
-          </button>
-          <button
-            className="collections-action-btn"
-            onClick={() => setIsNaming(true)}
-            title="Save Current Request"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+  const getStatusColor = (status: number) => {
+    if (status === 0) return 'status-error';
+    if (status >= 200 && status < 300) return 'status-success';
+    if (status >= 300 && status < 400) return 'status-redirect';
+    if (status >= 400 && status < 500) return 'status-client-error';
+    return 'status-server-error';
+  };
 
+  const renderRecentRequests = () => (
+    <div className="collections-list">
+      {recentRequests.length === 0 ? (
+        <div className="collections-empty">
+          <p>No recent requests</p>
+          <p className="collections-empty-hint">
+            Send a request to see it here
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="recent-header">
+            <button
+              className="clear-recent-btn"
+              onClick={onClearRecent}
+              title="Clear history"
+            >
+              Clear All
+            </button>
+          </div>
+          {recentRequests.map((recent) => (
+            <div
+              key={recent.id}
+              className="collection-item recent-item"
+              onClick={() => onSelectRecent(recent)}
+            >
+              <div className="collection-item-header">
+                <span className={`collection-method ${getMethodColor(recent.request.method)}`}>
+                  {recent.request.method}
+                </span>
+                {recent.response && (
+                  <span className={`recent-status ${getStatusColor(recent.response.status)}`}>
+                    {recent.response.status || 'ERR'}
+                  </span>
+                )}
+              </div>
+              <div className="collection-item-url" title={recent.request.url}>
+                {recent.request.url || 'No URL'}
+              </div>
+              <div className="collection-item-footer">
+                <span className="collection-date">{formatRelativeTime(recent.timestamp)}</span>
+                {recent.response && (
+                  <span className="recent-duration">{recent.response.duration}ms</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+
+  const renderCollections = () => (
+    <>
       {isNaming && (
         <div className="save-request-form">
           <input
@@ -201,6 +257,62 @@ export function Collections({
           ))
         )}
       </div>
+    </>
+  );
+
+  return (
+    <div className="collections-sidebar">
+      <div className="collections-header">
+        <div className="sidebar-tabs">
+          <button
+            className={`sidebar-tab ${activeTab === 'recent' ? 'active' : ''}`}
+            onClick={() => setActiveTab('recent')}
+          >
+            Recent
+            {recentRequests.length > 0 && (
+              <span className="sidebar-tab-badge">{recentRequests.length}</span>
+            )}
+          </button>
+          <button
+            className={`sidebar-tab ${activeTab === 'collections' ? 'active' : ''}`}
+            onClick={() => setActiveTab('collections')}
+          >
+            Collections
+            {requests.length > 0 && (
+              <span className="sidebar-tab-badge">{requests.length}</span>
+            )}
+          </button>
+        </div>
+        <div className="collections-actions">
+          <button
+            className="collections-action-btn"
+            onClick={onNew}
+            title="New Request"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </button>
+          {activeTab === 'collections' && (
+            <button
+              className="collections-action-btn"
+              onClick={() => setIsNaming(true)}
+              title="Save Current Request"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {activeTab === 'recent' ? renderRecentRequests() : renderCollections()}
     </div>
   );
 }
