@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { HttpRequest, KeyValuePair, RequestBody } from '../../../core/types';
+import { HttpRequest, KeyValuePair, RequestBody, AuthConfig } from '../../../core/types';
 import { HeadersTab } from './HeadersTab';
 import { ParamsTab } from './ParamsTab';
 import { BodyTab } from './BodyTab';
+import { AuthTab } from './AuthTab';
 
 type TabId = 'params' | 'headers' | 'body' | 'auth';
 
@@ -74,6 +75,10 @@ export function RequestTabs({ request, onRequestChange }: RequestTabsProps) {
     onRequestChange({ ...request, body, headers });
   };
 
+  const handleAuthChange = (auth: AuthConfig) => {
+    onRequestChange({ ...request, auth });
+  };
+
   // Count enabled items for badges
   const enabledHeadersCount = request.headers.filter(h => h.enabled && h.key).length;
   const enabledParamsCount = request.queryParams.filter(p => p.enabled && p.key).length;
@@ -94,11 +99,7 @@ export function RequestTabs({ request, onRequestChange }: RequestTabsProps) {
       case 'body':
         return <BodyTab body={request.body} onChange={handleBodyChange} />;
       case 'auth':
-        return (
-          <div className="tab-placeholder">
-            Auth tab coming in Milestone 5
-          </div>
-        );
+        return <AuthTab auth={request.auth} onChange={handleAuthChange} />;
       default:
         return null;
     }

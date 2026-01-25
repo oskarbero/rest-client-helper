@@ -520,3 +520,452 @@ body {
 .body-textarea::placeholder {
   color: var(--text-secondary);
 }
+
+/* Auth Tab */
+.auth-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-type-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.auth-type-button {
+  padding: 6px 14px;
+  background-color: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-type-button:hover {
+  color: var(--text-primary);
+}
+
+.auth-type-button.active {
+  background-color: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-input {
+  padding: 10px 12px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.auth-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.auth-radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.auth-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.auth-radio-label input[type="radio"] {
+  accent-color: var(--accent-blue);
+}
+
+.auth-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.auth-info code {
+  background-color: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  color: var(--accent-green);
+}
+
+.auth-none-message {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Response Panel Enhancements */
+.response-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.response-header {
+  flex-shrink: 0;
+}
+
+.response-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.meta-item svg {
+  opacity: 0.7;
+}
+
+/* Status Badge Variants */
+.status-badge.success {
+  background-color: rgba(78, 201, 176, 0.2);
+  color: var(--accent-green);
+}
+
+.status-badge.redirect {
+  background-color: rgba(86, 156, 214, 0.2);
+  color: var(--accent-blue);
+}
+
+.status-badge.client-error {
+  background-color: rgba(220, 220, 170, 0.2);
+  color: var(--accent-yellow);
+}
+
+.status-badge.server-error {
+  background-color: rgba(241, 76, 76, 0.2);
+  color: var(--accent-red);
+}
+
+.status-badge.error {
+  background-color: rgba(241, 76, 76, 0.2);
+  color: var(--accent-red);
+}
+
+/* Response Tabs */
+.response-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.response-tabs-header {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.response-tab-button {
+  padding: 8px 16px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.response-tab-button:hover {
+  color: var(--text-primary);
+}
+
+.response-tab-button.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue);
+}
+
+.response-tab-badge {
+  background-color: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.response-tab-button.active .response-tab-badge {
+  background-color: var(--accent-blue);
+  color: white;
+}
+
+.response-tabs-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+/* Response Body Content */
+.response-body-content {
+  height: 100%;
+}
+
+.response-pre {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* Loading Spinner */
+.response-body.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Syntax Highlighting - JSON */
+.syntax-json .token-key {
+  color: #9cdcfe;
+}
+
+.syntax-json .token-string {
+  color: #ce9178;
+}
+
+.syntax-json .token-number {
+  color: #b5cea8;
+}
+
+.syntax-json .token-boolean {
+  color: #569cd6;
+}
+
+.syntax-json .token-null {
+  color: #569cd6;
+}
+
+.syntax-json .token-punctuation {
+  color: var(--text-primary);
+}
+
+/* Syntax Highlighting - XML */
+.syntax-xml .token-tag {
+  color: #569cd6;
+}
+
+.syntax-xml .token-attribute {
+  color: #9cdcfe;
+}
+
+.syntax-xml .token-punctuation {
+  color: var(--text-secondary);
+}
+
+/* Response Headers Table */
+.response-headers {
+  width: 100%;
+}
+
+.headers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.headers-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.headers-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+
+.headers-table tr:last-child td {
+  border-bottom: none;
+}
+
+.headers-table tr:hover td {
+  background-color: var(--bg-tertiary);
+}
+
+.header-name-col {
+  width: 200px;
+}
+
+.header-name {
+  color: var(--accent-blue);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-weight: 500;
+}
+
+.header-value {
+  color: var(--text-primary);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  word-break: break-all;
+}
+
+.response-headers-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Syntax Editor (editable code editor with highlighting) */
+.syntax-editor {
+  position: relative;
+  width: 100%;
+  min-height: 120px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-input);
+  overflow: hidden;
+}
+
+.syntax-editor:focus-within {
+  border-color: var(--accent-blue);
+}
+
+.syntax-editor-highlight,
+.syntax-editor-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  margin: 0;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+}
+
+.syntax-editor-highlight {
+  pointer-events: none;
+  color: var(--text-primary);
+  z-index: 1;
+}
+
+.syntax-editor-textarea {
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-primary);
+  resize: none;
+  outline: none;
+  z-index: 2;
+  -webkit-text-fill-color: transparent;
+}
+
+.syntax-editor-textarea::placeholder {
+  color: transparent;
+}
+
+.syntax-placeholder {
+  color: var(--text-secondary);
+}
+
+/* Syntax highlighting for JSON in editor */
+.syntax-json .token-key {
+  color: #9cdcfe;
+}
+
+.syntax-json .token-string {
+  color: #ce9178;
+}
+
+.syntax-json .token-number {
+  color: #b5cea8;
+}
+
+.syntax-json .token-boolean {
+  color: #569cd6;
+}
+
+.syntax-json .token-null {
+  color: #569cd6;
+}
+
+.syntax-json .token-punctuation {
+  color: var(--text-primary);
+}

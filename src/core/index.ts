@@ -5,3 +5,12 @@
 export * from './types';
 export { sendRequest } from './http-client';
 export { saveState, loadState } from './state-persistence';
+export { generateAuthHeaders, generateAuthQueryParam, isAuthConfigValid } from './auth-handler';
+export { 
+  formatResponseBody, 
+  formatJson, 
+  formatXml, 
+  detectContentType, 
+  tokenizeJson, 
+  getHighlightedTokens 
+} from './response-parser';

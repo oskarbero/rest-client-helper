@@ -10,19 +10,19 @@ todos:
     status: completed
   - id: milestone-2-methods-headers
     content: "MILESTONE 2 - Methods & Headers: Add method selector dropdown, Headers tab with key-value editor. TEST: Make POST request with custom headers."
-    status: pending
+    status: completed
   - id: milestone-3-params
     content: "MILESTONE 3 - Query Params: Add Params tab with key-value editor, integrate with request builder. TEST: Add query params and see them in the URL."
-    status: pending
+    status: completed
   - id: milestone-4-body
     content: "MILESTONE 4 - Request Body: Add Body tab with JSON/text editor. TEST: Send POST request with JSON body."
-    status: pending
+    status: completed
   - id: milestone-5-auth
     content: "MILESTONE 5 - Authorization: Add Auth tab with Basic/Bearer/API Key options. TEST: Make authenticated request."
-    status: pending
+    status: completed
   - id: milestone-6-response-formatting
     content: "MILESTONE 6 - Response Formatting: Pretty-print JSON/XML, show response headers, status badges, timing. TEST: See formatted JSON response."
-    status: pending
+    status: completed
   - id: milestone-7-collections
     content: "MILESTONE 7 - Collections: Save/load requests to local files, collections sidebar. TEST: Save a request and reload it."
     status: pending

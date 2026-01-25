@@ -1,22 +1,40 @@
-import { HttpRequest, HttpResponse } from './types';
+import { HttpRequest, HttpResponse, KeyValuePair } from './types';
+import { generateAuthHeaders, generateAuthQueryParam } from './auth-handler';
 
 /**
  * Sends an HTTP request and returns the response
- * This is a basic implementation for Milestone 1 - GET requests only
- * Will be enhanced with request-builder integration in later milestones
  */
 export async function sendRequest(request: HttpRequest): Promise<HttpResponse> {
   const startTime = performance.now();
 
   try {
+    // Collect query params including auth query param if applicable
+    let queryParams = [...request.queryParams];
+    const authQueryParam = generateAuthQueryParam(request.auth);
+    if (authQueryParam) {
+      queryParams = [...queryParams, authQueryParam];
+    }
+
     // Build the URL with query parameters
-    const url = buildUrl(request.url, request.queryParams);
+    const url = buildUrl(request.url, queryParams);
 
     // Build headers object from key-value pairs
     const headers: Record<string, string> = {};
     for (const header of request.headers) {
       if (header.enabled && header.key) {
         headers[header.key] = header.value;
+      }
+    }
+
+    // Apply auth headers (these take precedence if user hasn't set them manually)
+    const authHeaders = generateAuthHeaders(request.auth);
+    for (const [key, value] of Object.entries(authHeaders)) {
+      // Only add auth header if user hasn't manually set it
+      const hasManualHeader = request.headers.some(
+        h => h.enabled && h.key.toLowerCase() === key.toLowerCase()
+      );
+      if (!hasManualHeader) {
+        headers[key] = value;
       }
     }
 
