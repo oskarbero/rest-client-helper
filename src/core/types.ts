@@ -23,6 +23,7 @@ export interface RequestBody {
 // Authorization configuration
 export interface AuthConfig {
   type: AuthType;
+  disableInherit?: boolean; // If true and type is 'none', don't inherit auth from collection
   basic?: {
     username: string;
     password: string;

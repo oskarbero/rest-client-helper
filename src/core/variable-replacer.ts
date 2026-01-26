@@ -1,4 +1,5 @@
 import { HttpRequest, Environment, EnvironmentVariable, KeyValuePair, CollectionSettings } from './types';
+import { generateAuthHeaders } from './auth-handler';
 
 /**
  * Replaces variables in a text string using {{variable_name}} syntax
@@ -98,6 +99,46 @@ export function resolveRequestVariables(
 }
 
 /**
+ * Adds authentication headers to the request headers array
+ * @param request The request to add auth headers to
+ * @returns A new request with auth headers added to the headers array
+ */
+function addAuthHeadersToRequest(request: HttpRequest): HttpRequest {
+  // Generate auth headers from the auth config
+  const authHeaders = generateAuthHeaders(request.auth);
+  
+  // If no auth headers, return request as-is
+  if (Object.keys(authHeaders).length === 0) {
+    return { ...request };
+  }
+
+  // Create a map of existing headers by key (case-insensitive)
+  const headerMap = new Map<string, KeyValuePair>();
+  request.headers.forEach(h => {
+    if (h.key) {
+      headerMap.set(h.key.toLowerCase(), { ...h });
+    }
+  });
+
+  // Add auth headers only if they don't already exist
+  for (const [key, value] of Object.entries(authHeaders)) {
+    const lowerKey = key.toLowerCase();
+    if (!headerMap.has(lowerKey)) {
+      headerMap.set(lowerKey, {
+        key,
+        value,
+        enabled: true,
+      });
+    }
+  }
+
+  return {
+    ...request,
+    headers: Array.from(headerMap.values()),
+  };
+}
+
+/**
  * Resolves a request with collection settings and environment variables
  * @param request The request to resolve
  * @param collectionSettings The collection settings to apply (merged from ancestors)
@@ -156,9 +197,10 @@ export function resolveRequestWithCollectionSettings(
 
   // 3. Merge collection auth with request auth
   // Request auth takes precedence if set (and not 'none'), otherwise use collection auth
+  // But only if disableInherit is not true
   if (collectionSettings.auth) {
-    if (resolved.auth.type === 'none' || !resolved.auth) {
-      // Use collection auth if request has no auth
+    if ((resolved.auth.type === 'none' || !resolved.auth) && !resolved.auth?.disableInherit) {
+      // Use collection auth if request has no auth and inheritance is not disabled
       resolved.auth = JSON.parse(JSON.stringify(collectionSettings.auth));
     } else {
       // Request has auth, but we can merge some fields if collection auth provides them
@@ -166,6 +208,9 @@ export function resolveRequestWithCollectionSettings(
       // This matches the requirement: "request auth takes precedence if set"
     }
   }
+
+  // 4. Add auth headers to the headers array so they appear in the Request tab
+  resolved = addAuthHeadersToRequest(resolved);
 
   return resolved;
 }

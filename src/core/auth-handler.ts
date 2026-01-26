@@ -12,7 +12,11 @@ export function generateAuthHeaders(auth: AuthConfig): Record<string, string> {
     case 'basic':
       if (auth.basic?.username || auth.basic?.password) {
         const credentials = `${auth.basic.username || ''}:${auth.basic.password || ''}`;
-        const encoded = Buffer.from(credentials).toString('base64');
+        // Use btoa for browser compatibility (Buffer is not available in browser/renderer)
+        // btoa works with ASCII strings, which is sufficient for basic auth
+        // Note: If credentials contain {{variables}}, they will be encoded as-is here
+        // Variables are resolved later when the request is actually sent
+        const encoded = btoa(credentials);
         headers['Authorization'] = `Basic ${encoded}`;
       }
       break;

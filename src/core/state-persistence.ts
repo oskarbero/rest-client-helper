@@ -4,9 +4,17 @@ import { HttpRequest, createEmptyRequest } from './types';
 
 const STATE_FILE_NAME = 'app-state.json';
 
-interface AppState {
+export interface AppState {
   request: HttpRequest;
   lastSaved: string;
+  currentRequestId?: string | null;
+  expandedNodes?: string[];
+}
+
+export interface LoadedAppState {
+  request: HttpRequest;
+  currentRequestId: string | null;
+  expandedNodes: string[];
 }
 
 /**
@@ -19,10 +27,17 @@ function getStateFilePath(userDataPath: string): string {
 /**
  * Saves the current application state to disk
  */
-export async function saveState(userDataPath: string, request: HttpRequest): Promise<void> {
+export async function saveState(
+  userDataPath: string,
+  request: HttpRequest,
+  currentRequestId?: string | null,
+  expandedNodes?: Set<string>
+): Promise<void> {
   const state: AppState = {
     request,
     lastSaved: new Date().toISOString(),
+    currentRequestId: currentRequestId ?? null,
+    expandedNodes: expandedNodes ? Array.from(expandedNodes) : [],
   };
 
   const filePath = getStateFilePath(userDataPath);
@@ -37,22 +52,30 @@ export async function saveState(userDataPath: string, request: HttpRequest): Pro
 
 /**
  * Loads the application state from disk
- * Returns the default empty request if no state exists or loading fails
+ * Returns the full state object with defaults if no state exists or loading fails
  */
-export async function loadState(userDataPath: string): Promise<HttpRequest> {
+export async function loadState(userDataPath: string): Promise<LoadedAppState> {
   const filePath = getStateFilePath(userDataPath);
 
   try {
     const data = await fs.promises.readFile(filePath, 'utf-8');
     const state: AppState = JSON.parse(data);
     
-    // Validate and return the request, merging with defaults for any missing fields
+    // Validate and return the full state, merging with defaults for any missing fields
     return {
-      ...createEmptyRequest(),
-      ...state.request,
+      request: {
+        ...createEmptyRequest(),
+        ...state.request,
+      },
+      currentRequestId: state.currentRequestId ?? null,
+      expandedNodes: state.expandedNodes ?? [],
     };
   } catch (error) {
     // File doesn't exist or is invalid - return default state
-    return createEmptyRequest();
+    return {
+      request: createEmptyRequest(),
+      currentRequestId: null,
+      expandedNodes: [],
+    };
   }
 }

@@ -1,13 +1,14 @@
 import React from 'react';
-import { KeyValuePair } from '../../../core/types';
+import { KeyValuePair, Environment } from '../../../core/types';
 import { KeyValueEditor } from '../common/KeyValueEditor';
 
 interface ParamsTabProps {
   params: KeyValuePair[];
   onChange: (params: KeyValuePair[]) => void;
+  activeEnvironment?: Environment | null;
 }
 
-export function ParamsTab({ params, onChange }: ParamsTabProps) {
+export function ParamsTab({ params, onChange, activeEnvironment }: ParamsTabProps) {
   return (
     <div className="params-tab">
       <p className="tab-description">
@@ -18,6 +19,7 @@ export function ParamsTab({ params, onChange }: ParamsTabProps) {
         onChange={onChange}
         keyPlaceholder="Parameter name"
         valuePlaceholder="Parameter value"
+        activeEnvironment={activeEnvironment}
       />
     </div>
   );

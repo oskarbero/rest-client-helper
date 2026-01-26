@@ -226,7 +226,14 @@ export async function saveRequestToCollection(
       const { node: currentParent, parent: currentParentArray } = currentParentResult;
       const currentIndex = currentParentArray.findIndex((n) => n.id === existingId);
       
-      if (parentId !== currentParent?.id) {
+      // Determine current parent ID (null if at root, collection id if in a collection)
+      const currentParentId = currentParent?.id || null;
+      
+      // Only move if parentId is explicitly provided AND different from current parent
+      // If parentId is undefined, preserve the current parent
+      const shouldMove = parentId !== undefined && parentId !== currentParentId;
+      
+      if (shouldMove) {
         // Remove from current parent
         currentParentArray.splice(currentIndex, 1);
         if (currentParent && currentParent.type === 'collection') {
@@ -255,14 +262,14 @@ export async function saveRequestToCollection(
           newParent.children.push(requestNode);
           newParent.updatedAt = now;
         } else {
-          // Add to root
+          // Add to root (parentId is explicitly null/empty string, not undefined)
           if (!validateNameUniqueness(config.collections, name, existingId)) {
             throw new Error(`A request with name "${name}" already exists at root level`);
           }
           config.collections.push(requestNode);
         }
       } else {
-        // Same parent, just validate name uniqueness
+        // Same parent (or parentId is undefined, meaning keep current parent), just validate name uniqueness
         const siblings = currentParentArray.filter((n) => n.id !== existingId);
         if (!validateNameUniqueness(siblings, name)) {
           throw new Error(`A request with name "${name}" already exists in this collection`);

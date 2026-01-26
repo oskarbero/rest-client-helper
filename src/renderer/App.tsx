@@ -8,7 +8,8 @@ import { EnvironmentEditor } from './components/EnvironmentEditor/EnvironmentEdi
 import { CollectionSettingsEditor } from './components/CollectionSettings/CollectionSettingsEditor';
 import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, CollectionSettings, createEmptyRequest } from '../core/types';
 import { resolveRequestVariables, resolveRequestWithCollectionSettings, replaceVariables } from '../core/variable-replacer';
-import { resolveCollectionSettings, findParentCollectionId } from '../core/collection-settings-resolver';
+import { resolveCollectionSettings, findParentCollectionId, getAncestorPath } from '../core/collection-settings-resolver';
+import type { LoadedAppState } from '../core/state-persistence';
 
 // Toast notification type
 interface Toast {
@@ -105,13 +106,65 @@ function App() {
           return;
         }
 
-        // Load session state
-        const savedRequest = await window.electronAPI.loadState();
-        setRequest(savedRequest);
-
-        // Load saved collections tree
+        // Load saved collections tree first (needed to restore request from collection)
         const collections = await window.electronAPI.getCollectionsTree();
         setCollectionsTree(collections);
+
+        // Load full app state
+        const loadedState: LoadedAppState = await window.electronAPI.loadState();
+
+        // Restore expanded nodes
+        if (loadedState.expandedNodes && loadedState.expandedNodes.length > 0) {
+          setExpandedNodes(new Set(loadedState.expandedNodes));
+        }
+
+        // If we have a currentRequestId, try to load the request from the collection
+        if (loadedState.currentRequestId) {
+          // Find the request node in the collections tree
+          const findNodeById = (nodes: CollectionNode[], id: string): CollectionNode | null => {
+            for (const node of nodes) {
+              if (node.id === id) return node;
+              if (node.children) {
+                const found = findNodeById(node.children, id);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+
+          const requestNode = findNodeById(collections, loadedState.currentRequestId);
+          
+          if (requestNode && requestNode.type === 'request' && requestNode.request) {
+            // Load request from collection (most up-to-date)
+            const requestCopy = JSON.parse(JSON.stringify(requestNode.request));
+            setRequest(requestCopy);
+            setOriginalRequest(requestCopy);
+            setCurrentRequestId(loadedState.currentRequestId);
+            setHasUnsavedChanges(false);
+
+            // Expand all parent collections to show the selected request
+            const ancestorPath = getAncestorPath(collections, loadedState.currentRequestId);
+            if (ancestorPath.length > 0) {
+              setExpandedNodes(prev => {
+                const next = new Set(prev);
+                ancestorPath.forEach(id => next.add(id));
+                return next;
+              });
+            }
+          } else {
+            // Request not found in collection (might have been deleted), use saved state
+            setRequest(loadedState.request);
+            setCurrentRequestId(null);
+            setOriginalRequest(null);
+            setHasUnsavedChanges(false);
+          }
+        } else {
+          // No saved request ID, use the saved request state (unsaved/new request)
+          setRequest(loadedState.request);
+          setCurrentRequestId(null);
+          setOriginalRequest(null);
+          setHasUnsavedChanges(false);
+        }
 
         // Load environments
         const envs = await window.electronAPI.getEnvironments();
@@ -142,7 +195,7 @@ function App() {
     setHasUnsavedChanges(currentStr !== originalStr);
   }, [request, originalRequest]);
 
-  // Save state when request changes (debounced)
+  // Save state when request, selection, or expanded nodes change (debounced)
   useEffect(() => {
     if (!isInitialized) return;
 
@@ -154,7 +207,8 @@ function App() {
     // Debounce the save to avoid excessive writes
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        await window.electronAPI.saveState(request);
+        const expandedNodesArray = Array.from(expandedNodes);
+        await window.electronAPI.saveState(request, currentRequestId, expandedNodesArray);
       } catch (error) {
         console.error('Failed to save state:', error);
       }
@@ -165,7 +219,7 @@ function App() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [request, isInitialized]);
+  }, [request, currentRequestId, expandedNodes, isInitialized]);
 
   const handleUrlChange = (url: string) => {
     setRequest((prev) => ({ ...prev, url }));
@@ -317,6 +371,17 @@ function App() {
     
     return collectionSettings.baseUrl;
   }, [currentRequestId, collectionsTree, activeEnvironmentWithVariables]);
+
+  // Calculate collection settings for the current request (for auth inheritance)
+  const collectionSettingsForRequest = useMemo(() => {
+    if (!currentRequestId) return undefined;
+    
+    // Find parent collection and resolve its settings
+    const parentCollectionId = findParentCollectionId(collectionsTree, currentRequestId);
+    if (!parentCollectionId) return undefined;
+    
+    return resolveCollectionSettings(collectionsTree, parentCollectionId);
+  }, [currentRequestId, collectionsTree]);
 
   const handleDeleteFromCollection = useCallback(async (id: string) => {
     try {
@@ -833,6 +898,8 @@ function App() {
                       <RequestTabs
                         request={request}
                         onRequestChange={handleRequestChange}
+                        collectionSettings={collectionSettingsForRequest}
+                        activeEnvironment={activeEnvironmentWithVariables}
                       />
                     </div>
                   </main>

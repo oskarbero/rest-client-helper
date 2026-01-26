@@ -1,7 +1,7 @@
 import { ipcMain, app, dialog } from 'electron';
 import fs from 'fs';
 import { sendRequest } from '../core/http-client';
-import { saveState, loadState } from '../core/state-persistence';
+import { saveState, loadState, LoadedAppState } from '../core/state-persistence';
 import { 
   getCollectionsTree,
   createCollection,
@@ -35,11 +35,17 @@ export function registerIpcHandlers(): void {
   });
 
   // State persistence handlers
-  ipcMain.handle('state:save', async (_event, request: HttpRequest): Promise<void> => {
-    await saveState(userDataPath, request);
+  ipcMain.handle('state:save', async (
+    _event,
+    request: HttpRequest,
+    currentRequestId?: string | null,
+    expandedNodes?: string[]
+  ): Promise<void> => {
+    const expandedNodesSet = expandedNodes ? new Set(expandedNodes) : undefined;
+    await saveState(userDataPath, request, currentRequestId, expandedNodesSet);
   });
 
-  ipcMain.handle('state:load', async (): Promise<HttpRequest> => {
+  ipcMain.handle('state:load', async (): Promise<LoadedAppState> => {
     return loadState(userDataPath);
   });
 

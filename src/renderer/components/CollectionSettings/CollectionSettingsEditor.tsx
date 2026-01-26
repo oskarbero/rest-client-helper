@@ -32,7 +32,6 @@ export function CollectionSettingsEditor({
   const [originalBaseUrl, setOriginalBaseUrl] = useState<string>('');
   const [originalAuth, setOriginalAuth] = useState<AuthConfig>({ type: 'none' });
   const [originalHeaders, setOriginalHeaders] = useState<KeyValuePair[]>([]);
-  const [showBearerToken, setShowBearerToken] = useState(false);
 
   // Initialize editor when settings change
   useEffect(() => {
@@ -170,27 +169,27 @@ export function CollectionSettingsEditor({
           <div className="auth-form">
             <div className="auth-field">
               <label className="auth-label">Username</label>
-              <input
-                type="text"
-                className="auth-input"
-                placeholder="Enter username"
+              <VariableInput
                 value={editAuth.basic?.username || ''}
-                onChange={(e) => handleBasicChange('username', e.target.value)}
+                onChange={(value) => handleBasicChange('username', value)}
+                placeholder="Enter username or {{username}}"
+                activeEnvironment={activeEnvironment}
+                className="auth-input"
               />
             </div>
             <div className="auth-field">
               <label className="auth-label">Password</label>
-              <input
-                type="password"
-                className="auth-input"
-                placeholder="Enter password"
+              <VariableInput
                 value={editAuth.basic?.password || ''}
-                onChange={(e) => handleBasicChange('password', e.target.value)}
+                onChange={(value) => handleBasicChange('password', value)}
+                placeholder="Enter password or {{password}}"
+                activeEnvironment={activeEnvironment}
+                className="auth-input"
               />
             </div>
             <div className="auth-info">
               The username and password will be Base64 encoded and sent in the{' '}
-              <code>Authorization</code> header.
+              <code>Authorization</code> header. You can use variables like <code>{'{{username}}'}</code> or <code>{'{{password}}'}</code>.
             </div>
           </div>
         );
@@ -200,37 +199,17 @@ export function CollectionSettingsEditor({
           <div className="auth-form">
             <div className="auth-field">
               <label className="auth-label">Token</label>
-              <div className="auth-input-with-toggle">
-                <input
-                  type={showBearerToken ? "text" : "password"}
-                  className="auth-input"
-                  placeholder="Enter token"
-                  value={editAuth.bearer?.token || ''}
-                  onChange={(e) => handleBearerChange(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="auth-toggle-btn"
-                  onClick={() => setShowBearerToken(!showBearerToken)}
-                  title={showBearerToken ? "Hide token" : "Show token"}
-                >
-                  {showBearerToken ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <VariableInput
+                value={editAuth.bearer?.token || ''}
+                onChange={(value) => handleBearerChange(value)}
+                placeholder="Enter token or {{token}}"
+                activeEnvironment={activeEnvironment}
+                className="auth-input"
+              />
             </div>
             <div className="auth-info">
               The token will be sent in the <code>Authorization</code> header as{' '}
-              <code>Bearer &lt;token&gt;</code>.
+              <code>Bearer &lt;token&gt;</code>. You can use variables like <code>{'{{token}}'}</code> or <code>{'{{apiKey}}'}</code>.
             </div>
           </div>
         );
@@ -361,6 +340,7 @@ export function CollectionSettingsEditor({
             onChange={setEditHeaders}
             keyPlaceholder="Header name"
             valuePlaceholder="Header value"
+            activeEnvironment={activeEnvironment}
           />
         </div>
       </div>

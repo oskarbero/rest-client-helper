@@ -1,11 +1,13 @@
 import React from 'react';
-import { KeyValuePair } from '../../../core/types';
+import { KeyValuePair, Environment } from '../../../core/types';
+import { VariableInput } from './VariableInput';
 
 interface KeyValueEditorProps {
   pairs: KeyValuePair[];
   onChange: (pairs: KeyValuePair[]) => void;
   keyPlaceholder?: string;
   valuePlaceholder?: string;
+  activeEnvironment?: Environment | null;
 }
 
 export function KeyValueEditor({
@@ -13,6 +15,7 @@ export function KeyValueEditor({
   onChange,
   keyPlaceholder = 'Key',
   valuePlaceholder = 'Value',
+  activeEnvironment = null,
 }: KeyValueEditorProps) {
   const handleChange = (index: number, field: keyof KeyValuePair, value: string | boolean) => {
     const newPairs = [...pairs];
@@ -46,19 +49,19 @@ export function KeyValueEditor({
               checked={pair.enabled}
               onChange={(e) => handleChange(index, 'enabled', e.target.checked)}
             />
-            <input
-              type="text"
-              className="kv-input kv-key"
-              placeholder={keyPlaceholder}
+            <VariableInput
               value={pair.key}
-              onChange={(e) => handleChange(index, 'key', e.target.value)}
+              onChange={(value) => handleChange(index, 'key', value)}
+              placeholder={keyPlaceholder}
+              activeEnvironment={activeEnvironment}
+              className="kv-input kv-key"
             />
-            <input
-              type="text"
-              className="kv-input kv-value"
-              placeholder={valuePlaceholder}
+            <VariableInput
               value={pair.value}
-              onChange={(e) => handleChange(index, 'value', e.target.value)}
+              onChange={(value) => handleChange(index, 'value', value)}
+              placeholder={valuePlaceholder}
+              activeEnvironment={activeEnvironment}
+              className="kv-input kv-value"
             />
             <button
               className="kv-remove"

@@ -85,27 +85,25 @@ function computeFullResolvedUrl(
   collectionBaseUrl?: string,
   activeEnvironment?: Environment | null
 ): string {
-  // First resolve variables in the request URL
-  let resolvedUrl = requestUrl;
+  // Create variables record once
+  const variables: Record<string, string> = {};
   if (activeEnvironment?.variables) {
-    const variables: Record<string, string> = {};
     for (const variable of activeEnvironment.variables) {
       if (variable.key) {
         variables[variable.key] = variable.value || '';
       }
     }
+  }
+  
+  // Resolve variables in the request URL
+  let resolvedUrl = requestUrl;
+  if (Object.keys(variables).length > 0) {
     resolvedUrl = replaceVariables(requestUrl, variables).trim();
   }
   
   // Resolve variables in collection baseURL if present
   let resolvedBaseUrl = collectionBaseUrl;
-  if (resolvedBaseUrl && activeEnvironment?.variables) {
-    const variables: Record<string, string> = {};
-    for (const variable of activeEnvironment.variables) {
-      if (variable.key) {
-        variables[variable.key] = variable.value || '';
-      }
-    }
+  if (resolvedBaseUrl && Object.keys(variables).length > 0) {
     resolvedBaseUrl = replaceVariables(resolvedBaseUrl, variables).trim();
   }
   
@@ -121,8 +119,17 @@ function computeFullResolvedUrl(
     fullUrl = normalizedBaseUrl + normalizedRequestUrl;
   }
   
-  // Build full URL with query params
-  return buildFullUrl(fullUrl, queryParams);
+  // Resolve variables in query params (both keys and values)
+  const resolvedQueryParams = Object.keys(variables).length > 0
+    ? queryParams.map(param => ({
+        ...param,
+        key: replaceVariables(param.key, variables),
+        value: replaceVariables(param.value, variables),
+      }))
+    : queryParams;
+  
+  // Build full URL with resolved query params
+  return buildFullUrl(fullUrl, resolvedQueryParams);
 }
 
 export function UrlBar({ 

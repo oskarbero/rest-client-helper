@@ -102,6 +102,9 @@ body {
   background-color: var(--bg-secondary);
   overflow-y: auto;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* URL Bar */
@@ -301,12 +304,17 @@ input.url-input::placeholder {
 /* Request Tabs */
 .request-tabs {
   margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .tabs-header {
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .tab-button {
@@ -343,7 +351,8 @@ input.url-input::placeholder {
 
 .tabs-content {
   padding: 16px 0;
-  max-height: 200px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -358,6 +367,7 @@ input.url-input::placeholder {
   color: var(--text-secondary);
   font-size: 12px;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .tab-description code {
@@ -372,6 +382,8 @@ input.url-input::placeholder {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 100%;
+  min-height: 0;
 }
 
 .kv-header {
@@ -382,6 +394,7 @@ input.url-input::placeholder {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 .kv-col-checkbox {
@@ -404,6 +417,9 @@ input.url-input::placeholder {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .kv-row {
@@ -470,6 +486,7 @@ input.url-input::placeholder {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .kv-add:hover {
@@ -482,11 +499,14 @@ input.url-input::placeholder {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: 100%;
+  min-height: 0;
 }
 
 .body-type-selector {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .body-type-button {
@@ -521,12 +541,15 @@ input.url-input::placeholder {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-height: 0;
 }
 
 .body-editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .body-editor-label {
@@ -554,6 +577,7 @@ input.url-input::placeholder {
 
 .body-textarea {
   width: 100%;
+  flex: 1;
   min-height: 120px;
   padding: 12px;
   background-color: var(--bg-input);
@@ -563,7 +587,7 @@ input.url-input::placeholder {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
 }
 
 .body-textarea:focus {
@@ -575,16 +599,28 @@ input.url-input::placeholder {
   color: var(--text-secondary);
 }
 
+/* Tab Components */
+.headers-tab,
+.params-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 /* Auth Tab */
 .auth-tab {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .auth-type-selector {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .auth-type-button {
@@ -695,6 +731,20 @@ input.url-input::placeholder {
   accent-color: var(--accent-blue);
 }
 
+.auth-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.auth-checkbox-label input[type="checkbox"] {
+  accent-color: var(--accent-blue);
+  cursor: pointer;
+}
+
 .auth-info {
   font-size: 12px;
   color: var(--text-secondary);
@@ -717,6 +767,37 @@ input.url-input::placeholder {
   font-style: italic;
   text-align: center;
   padding: 20px;
+}
+
+.auth-inherited-notice {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.auth-inherited-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background-color: rgba(86, 156, 214, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(86, 156, 214, 0.3);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-input-inherited {
+  background-color: var(--bg-tertiary);
+  border-color: rgba(86, 156, 214, 0.3);
+  font-style: italic;
+}
+
+.auth-input-inherited:focus {
+  border-color: var(--accent-blue);
+  background-color: var(--bg-input);
+  font-style: normal;
 }
 
 /* Response Panel Enhancements */

@@ -1,13 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
+import type { LoadedAppState } from '../core/state-persistence';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
   // HTTP requests
   sendRequest: (request: HttpRequest) => Promise<HttpResponse>;
   // Session state persistence
-  saveState: (request: HttpRequest) => Promise<void>;
-  loadState: () => Promise<HttpRequest>;
+  saveState: (request: HttpRequest, currentRequestId?: string | null, expandedNodes?: string[]) => Promise<void>;
+  loadState: () => Promise<LoadedAppState>;
   // Collections (tree-based)
   getCollectionsTree: () => Promise<CollectionNode[]>;
   createCollection: (name: string, parentId?: string) => Promise<CollectionNode>;
@@ -34,7 +35,8 @@ export interface ElectronAPI {
 // Expose protected methods to the renderer process
 contextBridge.exposeInMainWorld('electronAPI', {
   sendRequest: (request: HttpRequest) => ipcRenderer.invoke('request:send', request),
-  saveState: (request: HttpRequest) => ipcRenderer.invoke('state:save', request),
+  saveState: (request: HttpRequest, currentRequestId?: string | null, expandedNodes?: string[]) => 
+    ipcRenderer.invoke('state:save', request, currentRequestId, expandedNodes),
   loadState: () => ipcRenderer.invoke('state:load'),
   getCollectionsTree: () => ipcRenderer.invoke('collection:getTree'),
   createCollection: (name: string, parentId?: string) => 
