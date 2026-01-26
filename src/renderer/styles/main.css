@@ -2502,3 +2502,38 @@ input.url-input::placeholder {
   padding: 2px 4px;
   border-radius: 3px;
 }
+
+.variable-input-autocomplete {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  min-width: 200px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10001;
+}
+
+.variable-input-autocomplete-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.15s;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.variable-input-autocomplete-item:hover,
+.variable-input-autocomplete-item.selected {
+  background-color: var(--bg-tertiary);
+}
+
+.variable-input-autocomplete-item.selected {
+  color: var(--accent-blue);
+  font-weight: 500;
+}
