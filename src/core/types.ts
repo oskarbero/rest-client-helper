@@ -114,6 +114,9 @@ export interface Environment {
   variables: EnvironmentVariable[];
   createdAt: string;
   updatedAt: string;
+  // Optional: file path and last modified date for .env file imports
+  envFilePath?: string;
+  envFileLastModified?: string; // ISO date string
 }
 
 // Root environments structure

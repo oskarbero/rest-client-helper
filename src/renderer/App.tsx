@@ -39,8 +39,41 @@ function App() {
   // Environment state
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [activeEnvironment, setActiveEnvironment] = useState<Environment | null>(null);
+  const [activeEnvironmentWithVariables, setActiveEnvironmentWithVariables] = useState<Environment | null>(null);
   const [isEnvironmentsTabActive, setIsEnvironmentsTabActive] = useState(false);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
+
+  // Load variables from file when activeEnvironment changes and is linked to a file
+  useEffect(() => {
+    const loadVariablesFromFile = async () => {
+      if (!activeEnvironment?.id) {
+        setActiveEnvironmentWithVariables(null);
+        return;
+      }
+
+      if (activeEnvironment.envFilePath) {
+        // Environment is linked to a file, merge file variables with user variables
+        try {
+          // Always get fresh data from storage to ensure we have latest user variables
+          const envWithVars = await window.electronAPI.getEnvironmentWithVariables(activeEnvironment.id);
+          if (envWithVars) {
+            setActiveEnvironmentWithVariables(envWithVars);
+          } else {
+            setActiveEnvironmentWithVariables(activeEnvironment);
+          }
+        } catch (error) {
+          console.error('Failed to load variables from file:', error);
+          // Fallback to stored variables
+          setActiveEnvironmentWithVariables(activeEnvironment);
+        }
+      } else {
+        // Not linked to file, use stored variables
+        setActiveEnvironmentWithVariables(activeEnvironment);
+      }
+    };
+
+    loadVariablesFromFile();
+  }, [activeEnvironment]);
 
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -151,8 +184,9 @@ function App() {
     setResolvedRequest(null);
 
     try {
-      // Fetch active environment dynamically to ensure we always have the latest values
-      const currentActiveEnvironment = await window.electronAPI.getActiveEnvironment();
+      // Use activeEnvironmentWithVariables which is kept in sync via useEffect
+      // This ensures variables are always loaded from file if linked
+      const currentActiveEnvironment = activeEnvironmentWithVariables;
       
       // Resolve variables before sending
       const resolved = resolveRequestVariables(request, currentActiveEnvironment);
@@ -196,7 +230,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [request]);
+  }, [request, activeEnvironmentWithVariables]);
 
   // Collection handlers
   const handleSaveToCollection = useCallback(async (name: string, parentId?: string) => {
@@ -448,6 +482,22 @@ function App() {
       if (activeEnvironment?.id === id) {
         const updatedActive = await window.electronAPI.getActiveEnvironment();
         setActiveEnvironment(updatedActive);
+        // Also refresh the merged variables immediately
+        if (updatedActive?.envFilePath) {
+          try {
+            const envWithVars = await window.electronAPI.getEnvironmentWithVariables(updatedActive.id);
+            if (envWithVars) {
+              setActiveEnvironmentWithVariables(envWithVars);
+            } else {
+              setActiveEnvironmentWithVariables(updatedActive);
+            }
+          } catch (error) {
+            console.error('Failed to refresh variables:', error);
+            setActiveEnvironmentWithVariables(updatedActive);
+          }
+        } else {
+          setActiveEnvironmentWithVariables(updatedActive);
+        }
       }
       
       // Update selected environment if it was the one being edited
@@ -630,6 +680,21 @@ function App() {
                     environment={selectedEnvironment}
                     onUpdate={handleUpdateEnvironment}
                     showToast={showToast}
+                    onEnvironmentChange={async () => {
+                      // Refresh environments list and active environment
+                      const updatedEnvs = await window.electronAPI.getEnvironments();
+                      setEnvironments(updatedEnvs);
+                      if (activeEnvironment?.id) {
+                        const updatedActive = await window.electronAPI.getActiveEnvironment();
+                        setActiveEnvironment(updatedActive);
+                      }
+                      if (selectedEnvironmentId) {
+                        const updatedSelected = updatedEnvs.find(env => env.id === selectedEnvironmentId);
+                        if (updatedSelected) {
+                          // EnvironmentEditor will update via useEffect
+                        }
+                      }
+                    }}
                   />
                 </div>
               </main>
@@ -647,7 +712,7 @@ function App() {
                         onQueryParamsChange={handleQueryParamsChange}
                         onSend={handleSend}
                         isLoading={isLoading}
-                        activeEnvironment={activeEnvironment}
+                        activeEnvironment={activeEnvironmentWithVariables}
                       />
                       <RequestTabs
                         request={request}

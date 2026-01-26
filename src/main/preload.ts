@@ -23,6 +23,10 @@ export interface ElectronAPI {
   duplicateEnvironment: (sourceId: string, newName: string) => Promise<Environment>;
   setActiveEnvironment: (id: string | null) => Promise<void>;
   getActiveEnvironment: () => Promise<Environment | null>;
+  linkEnvironmentToEnvFile: (environmentId: string) => Promise<{ filePath: string; lastModified: string } | null>;
+  unlinkEnvironmentFromEnvFile: (environmentId: string) => Promise<void>;
+  readVariablesFromEnvFile: (filePath: string) => Promise<EnvironmentVariable[]>;
+  getEnvironmentWithVariables: (environmentId: string) => Promise<Environment | null>;
 }
 
 // Expose protected methods to the renderer process
@@ -50,4 +54,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('environment:duplicate', sourceId, newName),
   setActiveEnvironment: (id: string | null) => ipcRenderer.invoke('environment:setActive', id),
   getActiveEnvironment: () => ipcRenderer.invoke('environment:getActive'),
+  linkEnvironmentToEnvFile: (environmentId: string) => ipcRenderer.invoke('environment:linkEnvFile', environmentId),
+  unlinkEnvironmentFromEnvFile: (environmentId: string) => ipcRenderer.invoke('environment:unlinkEnvFile', environmentId),
+  readVariablesFromEnvFile: (filePath: string) => ipcRenderer.invoke('environment:readVariablesFromFile', filePath),
+  getEnvironmentWithVariables: (environmentId: string) => ipcRenderer.invoke('environment:getWithVariables', environmentId),
 } as ElectronAPI);

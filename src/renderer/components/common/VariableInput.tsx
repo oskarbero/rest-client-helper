@@ -89,7 +89,11 @@ function createVariableMap(variables: EnvironmentVariable[]): Map<string, string
   const map = new Map<string, string>();
   for (const variable of variables) {
     if (variable.key) {
-      map.set(variable.key, variable.value || '');
+      // Trim key to ensure consistent matching (variable names from text are also trimmed)
+      const trimmedKey = variable.key.trim();
+      if (trimmedKey) {
+        map.set(trimmedKey, variable.value || '');
+      }
     }
   }
   return map;
@@ -104,7 +108,9 @@ function enrichSegments(
 ): TextSegment[] {
   return segments.map(segment => {
     if (segment.type === 'variable' && segment.variableName) {
-      const value = variableMap.get(segment.variableName);
+      // Variable name is already trimmed from parseText, but ensure it matches trimmed keys in map
+      const trimmedVarName = segment.variableName.trim();
+      const value = variableMap.get(trimmedVarName);
       if (value !== undefined) {
         return {
           ...segment,

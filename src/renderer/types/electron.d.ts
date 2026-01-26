@@ -21,6 +21,10 @@ export interface ElectronAPI {
   duplicateEnvironment: (sourceId: string, newName: string) => Promise<Environment>;
   setActiveEnvironment: (id: string | null) => Promise<void>;
   getActiveEnvironment: () => Promise<Environment | null>;
+  linkEnvironmentToEnvFile: (environmentId: string) => Promise<{ filePath: string; lastModified: string } | null>;
+  unlinkEnvironmentFromEnvFile: (environmentId: string) => Promise<void>;
+  readVariablesFromEnvFile: (filePath: string) => Promise<EnvironmentVariable[]>;
+  getEnvironmentWithVariables: (environmentId: string) => Promise<Environment | null>;
 }
 
 declare global {

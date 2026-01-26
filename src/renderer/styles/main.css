@@ -2302,6 +2302,72 @@ input.url-input::placeholder {
   line-height: 1;
 }
 
+.env-file-link-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.env-file-link,
+.env-file-unlink {
+  padding: 6px 12px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.env-file-link:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.env-file-unlink {
+  margin-left: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.env-file-unlink:hover {
+  background-color: rgba(241, 76, 76, 0.2);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.env-file-linked {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.env-file-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.env-file-info {
+  padding: 12px;
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.env-file-info p {
+  margin: 0;
+}
+
 .item-action-btn.has-changes {
   color: var(--accent-orange);
   position: relative;

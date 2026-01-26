@@ -6,6 +6,7 @@ interface EnvironmentEditorProps {
   onUpdate: (id: string, name: string, variables: EnvironmentVariable[]) => void;
   onCancel?: () => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  onEnvironmentChange?: () => void; // Callback to refresh environment list
 }
 
 export function EnvironmentEditor({
@@ -13,6 +14,7 @@ export function EnvironmentEditor({
   onUpdate,
   onCancel,
   showToast,
+  onEnvironmentChange,
 }: EnvironmentEditorProps) {
   const [editName, setEditName] = useState('');
   const [editVariables, setEditVariables] = useState<EnvironmentVariable[]>([]);
@@ -23,6 +25,7 @@ export function EnvironmentEditor({
   useEffect(() => {
     if (environment) {
       setEditName(environment.name);
+      // Always use stored variables (user-defined), never show file variables in editor
       setEditVariables([...environment.variables]);
       setOriginalName(environment.name);
       setOriginalVariables(JSON.parse(JSON.stringify(environment.variables))); // Deep copy
@@ -48,6 +51,34 @@ export function EnvironmentEditor({
     const newVariables = editVariables.filter((_, i) => i !== index);
     setEditVariables(newVariables);
   };
+
+  const handleLinkEnvFile = useCallback(async () => {
+    if (!environment || !window.electronAPI) return;
+
+    try {
+      const result = await window.electronAPI.linkEnvironmentToEnvFile(environment.id);
+      if (result) {
+        showToast?.('Environment linked to .env file', 'success');
+        onEnvironmentChange?.();
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to link .env file';
+      showToast?.(errorMessage, 'error');
+    }
+  }, [environment, showToast, onEnvironmentChange]);
+
+  const handleUnlinkEnvFile = useCallback(async () => {
+    if (!environment || !window.electronAPI) return;
+
+    try {
+      await window.electronAPI.unlinkEnvironmentFromEnvFile(environment.id);
+      showToast?.('Environment unlinked from .env file', 'success');
+      onEnvironmentChange?.();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to unlink .env file';
+      showToast?.(errorMessage, 'error');
+    }
+  }, [environment, showToast, onEnvironmentChange]);
 
   const handleSave = useCallback(() => {
     if (!environment) return;
@@ -178,6 +209,43 @@ export function EnvironmentEditor({
         </div>
       </div>
       <div className="environment-variables-editor">
+        <div className="env-file-link-section">
+          {environment.envFilePath ? (
+            <div className="env-file-linked">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              <span className="env-file-path" title={environment.envFilePath}>
+                Linked to: {environment.envFilePath.split(/[/\\]/).pop()}
+              </span>
+              <button
+                className="env-file-unlink"
+                onClick={handleUnlinkEnvFile}
+                title="Unlink from .env file"
+              >
+                Unlink
+              </button>
+            </div>
+          ) : (
+            <button
+              className="env-file-link"
+              onClick={handleLinkEnvFile}
+              title="Link to .env file"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              Link to .env file
+            </button>
+          )}
+        </div>
+        {environment.envFilePath && (
+          <div className="env-file-info">
+            <p>Variables from the linked .env file are automatically loaded and used. You can add additional variables below that will override file variables with the same name.</p>
+          </div>
+        )}
         <div className="env-vars-header">
           <span className="env-var-col-key">Variable Name</span>
           <span className="env-var-col-value">Value</span>
