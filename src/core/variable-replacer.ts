@@ -1,4 +1,4 @@
-import { HttpRequest, Environment, EnvironmentVariable, KeyValuePair } from './types';
+import { HttpRequest, Environment, EnvironmentVariable, KeyValuePair, CollectionSettings } from './types';
 
 /**
  * Replaces variables in a text string using {{variable_name}} syntax
@@ -93,6 +93,79 @@ export function resolveRequestVariables(
       } : undefined,
     },
   };
+
+  return resolved;
+}
+
+/**
+ * Resolves a request with collection settings and environment variables
+ * @param request The request to resolve
+ * @param collectionSettings The collection settings to apply (merged from ancestors)
+ * @param activeEnvironment The active environment (null if none)
+ * @returns A new request with collection settings and variables applied
+ */
+export function resolveRequestWithCollectionSettings(
+  request: HttpRequest,
+  collectionSettings: CollectionSettings,
+  activeEnvironment: Environment | null
+): HttpRequest {
+  // First resolve variables in the request
+  let resolved = resolveRequestVariables(request, activeEnvironment);
+
+  // Apply collection settings
+  // 1. Prepend base URL to request URL (always prepend if baseURL is defined)
+  if (collectionSettings.baseUrl && collectionSettings.baseUrl.trim()) {
+    // Resolve variables in the baseURL first
+    let baseUrl = collectionSettings.baseUrl.trim();
+    if (activeEnvironment?.variables) {
+      const variables = variablesToRecord(activeEnvironment.variables);
+      baseUrl = replaceVariables(baseUrl, variables).trim();
+    }
+    
+    const requestUrl = resolved.url.trim();
+    
+    if (requestUrl && baseUrl) {
+      // Always prepend baseURL regardless of whether request URL starts with http:// or https://
+      // Ensure baseUrl ends with / and requestUrl doesn't start with /
+      const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      const normalizedRequestUrl = requestUrl.startsWith('/') ? requestUrl : '/' + requestUrl;
+      resolved.url = normalizedBaseUrl + normalizedRequestUrl;
+    }
+  }
+
+  // 2. Merge collection headers with request headers (request headers take precedence)
+  if (collectionSettings.headers && collectionSettings.headers.length > 0) {
+    const headerMap = new Map<string, KeyValuePair>();
+    
+    // First add collection headers
+    collectionSettings.headers.forEach(h => {
+      if (h.key) {
+        headerMap.set(h.key.toLowerCase(), { ...h });
+      }
+    });
+    
+    // Then add/override with request headers (request headers take precedence)
+    resolved.headers.forEach(h => {
+      if (h.key) {
+        headerMap.set(h.key.toLowerCase(), { ...h });
+      }
+    });
+    
+    resolved.headers = Array.from(headerMap.values());
+  }
+
+  // 3. Merge collection auth with request auth
+  // Request auth takes precedence if set (and not 'none'), otherwise use collection auth
+  if (collectionSettings.auth) {
+    if (resolved.auth.type === 'none' || !resolved.auth) {
+      // Use collection auth if request has no auth
+      resolved.auth = JSON.parse(JSON.stringify(collectionSettings.auth));
+    } else {
+      // Request has auth, but we can merge some fields if collection auth provides them
+      // For now, request auth completely overrides collection auth if request has any auth
+      // This matches the requirement: "request auth takes precedence if set"
+    }
+  }
 
   return resolved;
 }

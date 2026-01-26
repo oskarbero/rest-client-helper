@@ -36,6 +36,7 @@ interface CollectionsProps {
   onSetActiveEnvironment?: (id: string | null) => void;
   onTabChange?: (tab: 'recent' | 'environments' | 'collections') => void;
   onEnvironmentSelect?: (id: string | null) => void;
+  onOpenCollectionSettings?: (collectionId: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -435,6 +436,7 @@ export function Collections({
   onSetActiveEnvironment,
   onTabChange,
   onEnvironmentSelect,
+  onOpenCollectionSettings,
   showToast,
 }: CollectionsProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
@@ -736,6 +738,11 @@ export function Collections({
             }
           };
           collapseAll(node);
+        }
+        break;
+      case 'settings':
+        if (node.type === 'collection') {
+          onOpenCollectionSettings?.(node.id);
         }
         break;
     }

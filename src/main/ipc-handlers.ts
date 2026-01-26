@@ -9,6 +9,8 @@ import {
   deleteCollectionNode,
   renameCollectionNode,
   moveCollectionNode,
+  updateCollectionSettings,
+  getCollectionSettings,
   getEnvironments,
   createEnvironment,
   updateEnvironment,
@@ -19,7 +21,7 @@ import {
   loadEnvironmentsConfig,
   saveEnvironmentsConfig
 } from '../core/storage';
-import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../core/types';
+import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -64,6 +66,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('collection:move', async (_event, id: string, newParentId?: string): Promise<CollectionNode | null> => {
     return moveCollectionNode(userDataPath, id, newParentId);
+  });
+
+  ipcMain.handle('collection:getSettings', async (_event, collectionId: string): Promise<CollectionSettings | null> => {
+    return getCollectionSettings(userDataPath, collectionId);
+  });
+
+  ipcMain.handle('collection:updateSettings', async (_event, collectionId: string, settings: CollectionSettings): Promise<CollectionNode | null> => {
+    return updateCollectionSettings(userDataPath, collectionId, settings);
   });
 
   // Environment handlers

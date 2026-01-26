@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { UrlBar } from './components/RequestPanel/UrlBar';
 import { RequestTabs } from './components/RequestPanel/RequestTabs';
 import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
 import { EnvironmentEditor } from './components/EnvironmentEditor/EnvironmentEditor';
-import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, createEmptyRequest } from '../core/types';
-import { resolveRequestVariables } from '../core/variable-replacer';
+import { CollectionSettingsEditor } from './components/CollectionSettings/CollectionSettingsEditor';
+import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, CollectionSettings, createEmptyRequest } from '../core/types';
+import { resolveRequestVariables, resolveRequestWithCollectionSettings, replaceVariables } from '../core/variable-replacer';
+import { resolveCollectionSettings, findParentCollectionId } from '../core/collection-settings-resolver';
 
 // Toast notification type
 interface Toast {
@@ -42,6 +44,11 @@ function App() {
   const [activeEnvironmentWithVariables, setActiveEnvironmentWithVariables] = useState<Environment | null>(null);
   const [isEnvironmentsTabActive, setIsEnvironmentsTabActive] = useState(false);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
+
+  // Collection settings state
+  const [selectedCollectionForSettings, setSelectedCollectionForSettings] = useState<string | null>(null);
+  const [isCollectionSettingsActive, setIsCollectionSettingsActive] = useState(false);
+  const [collectionSettings, setCollectionSettings] = useState<CollectionSettings | null>(null);
 
   // Load variables from file when activeEnvironment changes and is linked to a file
   useEffect(() => {
@@ -188,8 +195,23 @@ function App() {
       // This ensures variables are always loaded from file if linked
       const currentActiveEnvironment = activeEnvironmentWithVariables;
       
-      // Resolve variables before sending
-      const resolved = resolveRequestVariables(request, currentActiveEnvironment);
+      // Resolve collection settings if we have a current request ID
+      let collectionSettings: CollectionSettings = {};
+      if (currentRequestId) {
+        // Find the parent collection ID for this request
+        const parentCollectionId = findParentCollectionId(collectionsTree, currentRequestId);
+        // If the request is in a collection, resolve settings
+        if (parentCollectionId) {
+          collectionSettings = resolveCollectionSettings(collectionsTree, parentCollectionId);
+        }
+      }
+      
+      // Resolve variables and collection settings before sending
+      const resolved = resolveRequestWithCollectionSettings(
+        request,
+        collectionSettings,
+        currentActiveEnvironment
+      );
       setResolvedRequest(resolved);
       
       const result = await window.electronAPI.sendRequest(resolved);
@@ -230,7 +252,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [request, activeEnvironmentWithVariables]);
+  }, [request, activeEnvironmentWithVariables, currentRequestId, collectionsTree]);
 
   // Collection handlers
   const handleSaveToCollection = useCallback(async (name: string, parentId?: string) => {
@@ -265,8 +287,36 @@ function App() {
       setCurrentRequestId(node.id);
       setHasUnsavedChanges(false);
       setResponse(null);
+      // Close collection settings when selecting a request
+      setIsCollectionSettingsActive(false);
+      setSelectedCollectionForSettings(null);
     }
   }, []);
+
+  // Calculate collection baseURL for display (resolved with environment variables)
+  const collectionBaseUrlForDisplay = useMemo(() => {
+    if (!currentRequestId) return undefined;
+    
+    // Find parent collection and resolve its settings
+    const parentCollectionId = findParentCollectionId(collectionsTree, currentRequestId);
+    if (!parentCollectionId) return undefined;
+    
+    const collectionSettings = resolveCollectionSettings(collectionsTree, parentCollectionId);
+    if (!collectionSettings.baseUrl) return undefined;
+    
+    // Resolve variables in baseURL if it contains any
+    if (activeEnvironmentWithVariables && activeEnvironmentWithVariables.variables) {
+      const variables = activeEnvironmentWithVariables.variables.reduce((acc, v) => {
+        if (v.key) acc[v.key] = v.value || '';
+        return acc;
+      }, {} as Record<string, string>);
+      
+      // Use replaceVariables function for consistent variable replacement
+      return replaceVariables(collectionSettings.baseUrl, variables);
+    }
+    
+    return collectionSettings.baseUrl;
+  }, [currentRequestId, collectionsTree, activeEnvironmentWithVariables]);
 
   const handleDeleteFromCollection = useCallback(async (id: string) => {
     try {
@@ -349,6 +399,9 @@ function App() {
     setCurrentRequestId(null);
     setHasUnsavedChanges(false);
     setResponse(null);
+    // Close collection settings when creating new request
+    setIsCollectionSettingsActive(false);
+    setSelectedCollectionForSettings(null);
   }, []);
 
   const findNodeById = useCallback((nodes: CollectionNode[], id: string): CollectionNode | null => {
@@ -574,6 +627,54 @@ function App() {
     setSelectedEnvironmentId(id);
   }, []);
 
+  // Collection settings handlers
+  const handleOpenCollectionSettings = useCallback(async (collectionId: string) => {
+    try {
+      const settings = await window.electronAPI.getCollectionSettings(collectionId);
+      setSelectedCollectionForSettings(collectionId);
+      setCollectionSettings(settings);
+      setIsCollectionSettingsActive(true);
+      // Close environments tab if open
+      setIsEnvironmentsTabActive(false);
+    } catch (error) {
+      console.error('Failed to load collection settings:', error);
+      showToast('Failed to load collection settings', 'error');
+    }
+  }, [showToast]);
+
+  const handleUpdateCollectionSettings = useCallback(async (collectionId: string, settings: CollectionSettings) => {
+    try {
+      await window.electronAPI.updateCollectionSettings(collectionId, settings);
+      // Refresh collections tree to get updated settings
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      // Update local settings state
+      setCollectionSettings(settings);
+    } catch (error) {
+      console.error('Failed to update collection settings:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update collection settings';
+      showToast(errorMessage, 'error');
+      throw error;
+    }
+  }, [showToast]);
+
+  // Get selected collection for settings
+  const selectedCollection = selectedCollectionForSettings
+    ? (() => {
+        const findNode = (nodes: CollectionNode[], id: string): CollectionNode | null => {
+          for (const node of nodes) {
+            if (node.id === id) return node;
+            if (node.children) {
+              const found = findNode(node.children, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        return findNode(collectionsTree, selectedCollectionForSettings);
+      })()
+    : null;
+
   return (
     <div className="app">
       <header className="app-header">
@@ -667,6 +768,7 @@ function App() {
                 onSetActiveEnvironment={handleSetActiveEnvironment}
                 onTabChange={handleTabChange}
                 onEnvironmentSelect={handleEnvironmentSelect}
+                onOpenCollectionSettings={handleOpenCollectionSettings}
                 showToast={showToast}
               />
             </aside>
@@ -698,6 +800,19 @@ function App() {
                   />
                 </div>
               </main>
+            ) : isCollectionSettingsActive && selectedCollection ? (
+              <main className="app-main">
+                <div className="environment-editor-section">
+                  <CollectionSettingsEditor
+                    collectionId={selectedCollection.id}
+                    collectionName={selectedCollection.name}
+                    settings={collectionSettings}
+                    onUpdate={handleUpdateCollectionSettings}
+                    activeEnvironment={activeEnvironmentWithVariables}
+                    showToast={showToast}
+                  />
+                </div>
+              </main>
             ) : (
               <PanelGroup direction="vertical" autoSaveId="main-vertical">
                 <Panel defaultSize={50} minSize={20} className="request-panel">
@@ -713,6 +828,7 @@ function App() {
                         onSend={handleSend}
                         isLoading={isLoading}
                         activeEnvironment={activeEnvironmentWithVariables}
+                        collectionBaseUrl={collectionBaseUrlForDisplay}
                       />
                       <RequestTabs
                         request={request}

@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { HttpMethod, KeyValuePair, Environment } from '../../../core/types';
+import { HttpMethod, KeyValuePair, Environment, EnvironmentVariable } from '../../../core/types';
 import { VariableInput } from '../common/VariableInput';
+import { replaceVariables } from '../../../core/variable-replacer';
 
 interface UrlBarProps {
   url: string;
@@ -12,76 +13,116 @@ interface UrlBarProps {
   onSend: () => void;
   isLoading: boolean;
   activeEnvironment: Environment | null;
+  collectionBaseUrl?: string; // Base URL from collection settings
 }
 
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 // Parse URL and extract base URL + query params
+// Handles plain text URLs that may contain variables like {{var-name}}
+// No URL encoding/decoding is done here - that only happens when sending the request
 function parseUrlWithParams(fullUrl: string): { baseUrl: string; params: KeyValuePair[] } {
   if (!fullUrl) {
     return { baseUrl: '', params: [] };
   }
 
-  try {
-    const urlObj = new URL(fullUrl);
-    const params: KeyValuePair[] = [];
-    urlObj.searchParams.forEach((value, key) => {
-      params.push({ key, value, enabled: true });
-    });
-    // Remove search params from URL to get base URL
-    urlObj.search = '';
-    return { baseUrl: urlObj.toString(), params };
-  } catch {
-    // If URL is invalid, try manual parsing
-    const questionIndex = fullUrl.indexOf('?');
-    if (questionIndex === -1) {
-      return { baseUrl: fullUrl, params: [] };
-    }
-    
-    const baseUrl = fullUrl.substring(0, questionIndex);
-    const queryString = fullUrl.substring(questionIndex + 1);
-    const params: KeyValuePair[] = [];
-    
-    if (queryString) {
-      const pairs = queryString.split('&');
-      for (const pair of pairs) {
-        const [key, ...valueParts] = pair.split('=');
-        const value = valueParts.join('='); // Handle values with = in them
-        if (key) {
-          params.push({
-            key: decodeURIComponent(key),
-            value: value ? decodeURIComponent(value) : '',
-            enabled: true,
-          });
-        }
+  // Use manual parsing - don't use URL constructor as it may fail with variables
+  // Just split on ? to separate base URL from query string
+  const questionIndex = fullUrl.indexOf('?');
+  if (questionIndex === -1) {
+    return { baseUrl: fullUrl, params: [] };
+  }
+  
+  const baseUrl = fullUrl.substring(0, questionIndex);
+  const queryString = fullUrl.substring(questionIndex + 1);
+  const params: KeyValuePair[] = [];
+  
+  if (queryString) {
+    const pairs = queryString.split('&');
+    for (const pair of pairs) {
+      const [key, ...valueParts] = pair.split('=');
+      const value = valueParts.join('='); // Handle values with = in them
+      if (key) {
+        // Don't decode URI components - keep variables as {{var-name}}
+        params.push({
+          key: key,
+          value: value || '',
+          enabled: true,
+        });
       }
     }
-    
-    return { baseUrl, params };
   }
+  
+  return { baseUrl, params };
 }
 
 // Build full URL from base URL and params
+// This builds a plain text URL without encoding - encoding only happens when sending the request
+// This allows variables like {{var-name}} to be displayed as-is
 function buildFullUrl(baseUrl: string, params: KeyValuePair[]): string {
+  if (!baseUrl) {
+    return '';
+  }
+  
   const enabledParams = params.filter(p => p.enabled && p.key);
-  if (!baseUrl || enabledParams.length === 0) {
+  if (enabledParams.length === 0) {
     return baseUrl;
   }
 
-  try {
-    const urlObj = new URL(baseUrl);
-    enabledParams.forEach(param => {
-      urlObj.searchParams.append(param.key, param.value);
-    });
-    return urlObj.toString();
-  } catch {
-    // If URL is invalid, append manually
-    const paramString = enabledParams
-      .map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`)
-      .join('&');
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    return `${baseUrl}${separator}${paramString}`;
+  // Build query string without encoding (variables should remain as {{var-name}})
+  const paramString = enabledParams
+    .map(p => `${p.key}=${p.value}`)
+    .join('&');
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}${paramString}`;
+}
+
+// Helper function to compute the full resolved URL (with baseURL prepended and variables replaced)
+// This is used for display purposes only
+function computeFullResolvedUrl(
+  requestUrl: string,
+  queryParams: KeyValuePair[],
+  collectionBaseUrl?: string,
+  activeEnvironment?: Environment | null
+): string {
+  // First resolve variables in the request URL
+  let resolvedUrl = requestUrl;
+  if (activeEnvironment?.variables) {
+    const variables: Record<string, string> = {};
+    for (const variable of activeEnvironment.variables) {
+      if (variable.key) {
+        variables[variable.key] = variable.value || '';
+      }
+    }
+    resolvedUrl = replaceVariables(requestUrl, variables).trim();
   }
+  
+  // Resolve variables in collection baseURL if present
+  let resolvedBaseUrl = collectionBaseUrl;
+  if (resolvedBaseUrl && activeEnvironment?.variables) {
+    const variables: Record<string, string> = {};
+    for (const variable of activeEnvironment.variables) {
+      if (variable.key) {
+        variables[variable.key] = variable.value || '';
+      }
+    }
+    resolvedBaseUrl = replaceVariables(resolvedBaseUrl, variables).trim();
+  }
+  
+  // Prepend baseURL if present (always prepend if baseURL is defined)
+  let fullUrl = resolvedUrl;
+  if (resolvedBaseUrl && resolvedBaseUrl.trim() && resolvedUrl) {
+    const trimmedBaseUrl = resolvedBaseUrl.trim();
+    const trimmedRequestUrl = resolvedUrl.trim();
+    
+    // Always prepend baseURL regardless of whether request URL starts with http:// or https://
+    const normalizedBaseUrl = trimmedBaseUrl.endsWith('/') ? trimmedBaseUrl.slice(0, -1) : trimmedBaseUrl;
+    const normalizedRequestUrl = trimmedRequestUrl.startsWith('/') ? trimmedRequestUrl : '/' + trimmedRequestUrl;
+    fullUrl = normalizedBaseUrl + normalizedRequestUrl;
+  }
+  
+  // Build full URL with query params
+  return buildFullUrl(fullUrl, queryParams);
 }
 
 export function UrlBar({ 
@@ -93,12 +134,18 @@ export function UrlBar({
   onQueryParamsChange,
   onSend, 
   isLoading,
-  activeEnvironment
+  activeEnvironment,
+  collectionBaseUrl
 }: UrlBarProps) {
-  // Compute the full URL with query params for display
+  // Compute the full URL with query params for the input (user's entered URL only, no baseURL prepended)
   const fullUrl = useMemo(() => {
     return buildFullUrl(url, queryParams);
   }, [url, queryParams]);
+
+  // Compute the full resolved URL (with baseURL prepended and variables replaced) for display
+  const fullResolvedUrl = useMemo(() => {
+    return computeFullResolvedUrl(url, queryParams, collectionBaseUrl, activeEnvironment);
+  }, [url, queryParams, collectionBaseUrl, activeEnvironment]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && !isLoading) {
@@ -108,10 +155,10 @@ export function UrlBar({
 
   const handleUrlChange = useCallback((newFullUrl: string) => {
     // Parse the URL to extract base URL and params
-    const { baseUrl, params: urlParams } = parseUrlWithParams(newFullUrl);
+    const { baseUrl: fullBaseUrl, params: urlParams } = parseUrlWithParams(newFullUrl);
     
-    // Update base URL
-    onUrlChange(baseUrl);
+    // Store the URL as-is (user's entered URL, no baseURL stripping needed)
+    onUrlChange(fullBaseUrl);
     
     // Merge URL params with existing disabled params
     // Keep disabled params from the params tab, replace enabled ones with URL params
@@ -166,6 +213,18 @@ export function UrlBar({
           {isLoading ? 'Sending...' : 'Send'}
         </button>
       </div>
+      {fullResolvedUrl && fullResolvedUrl !== fullUrl && (
+        <div style={{
+          padding: '4px 12px',
+          fontSize: '12px',
+          color: 'var(--text-secondary)',
+          backgroundColor: 'var(--background-secondary)',
+          borderTop: '1px solid var(--border-color)',
+          fontFamily: 'monospace'
+        }}>
+          URL: {fullResolvedUrl}
+        </div>
+      )}
     </div>
   );
 }

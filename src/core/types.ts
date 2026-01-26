@@ -74,18 +74,6 @@ export interface Collection {
   requests: SavedRequest[];
 }
 
-// Collection node that can contain both requests and sub-collections
-export interface CollectionNode {
-  id: string;
-  name: string;
-  type: 'collection' | 'request';
-  createdAt: string;
-  updatedAt: string;
-  // For collections
-  children?: CollectionNode[];
-  // For requests
-  request?: HttpRequest;
-}
 
 // Root collections structure
 export interface CollectionsConfig {
@@ -124,6 +112,27 @@ export interface EnvironmentsConfig {
   version: string; // For future migrations
   environments: Environment[];
   activeEnvironmentId?: string;
+}
+
+// Collection settings that can be inherited by child requests and collections
+export interface CollectionSettings {
+  baseUrl?: string; // Base URL to prepend to request URLs
+  auth?: AuthConfig; // Authentication configuration (basic or bearer token)
+  headers?: KeyValuePair[]; // Common headers to apply to all requests
+}
+
+// Collection node that can contain both requests and sub-collections
+export interface CollectionNode {
+  id: string;
+  name: string;
+  type: 'collection' | 'request';
+  createdAt: string;
+  updatedAt: string;
+  // For collections
+  children?: CollectionNode[];
+  settings?: CollectionSettings; // Settings for collections (inherited by children)
+  // For requests
+  request?: HttpRequest;
 }
 
 // Default/empty request for initialization

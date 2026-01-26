@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../core/types';
+import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
@@ -15,6 +15,8 @@ export interface ElectronAPI {
   deleteCollectionNode: (id: string) => Promise<boolean>;
   renameCollectionNode: (id: string, newName: string) => Promise<CollectionNode | null>;
   moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
+  getCollectionSettings: (collectionId: string) => Promise<CollectionSettings | null>;
+  updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => Promise<CollectionNode | null>;
   // Environments
   getEnvironments: () => Promise<Environment[]>;
   createEnvironment: (name: string) => Promise<Environment>;
@@ -44,6 +46,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('collection:rename', id, newName),
   moveCollectionNode: (id: string, newParentId?: string) => 
     ipcRenderer.invoke('collection:move', id, newParentId),
+  getCollectionSettings: (collectionId: string) => 
+    ipcRenderer.invoke('collection:getSettings', collectionId),
+  updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => 
+    ipcRenderer.invoke('collection:updateSettings', collectionId, settings),
   // Environments
   getEnvironments: () => ipcRenderer.invoke('environment:getAll'),
   createEnvironment: (name: string) => ipcRenderer.invoke('environment:create', name),

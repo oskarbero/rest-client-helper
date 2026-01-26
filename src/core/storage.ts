@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable } from './types';
+import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable, CollectionSettings } from './types';
 
 // Collections are stored in a single JSON file
 const COLLECTIONS_FILE = 'collections.json';
@@ -457,6 +457,49 @@ export async function moveCollectionNode(
 
   await saveCollectionsConfig(basePath, config);
   return node;
+}
+
+/**
+ * Updates collection settings for a collection
+ */
+export async function updateCollectionSettings(
+  basePath: string,
+  collectionId: string,
+  settings: CollectionSettings
+): Promise<CollectionNode | null> {
+  const config = await loadCollectionsConfig(basePath);
+  const node = findNodeById(config.collections, collectionId);
+
+  if (!node) {
+    return null;
+  }
+
+  if (node.type !== 'collection') {
+    throw new Error('Node must be a collection to have settings');
+  }
+
+  node.settings = settings;
+  node.updatedAt = new Date().toISOString();
+
+  await saveCollectionsConfig(basePath, config);
+  return node;
+}
+
+/**
+ * Gets collection settings for a collection
+ */
+export async function getCollectionSettings(
+  basePath: string,
+  collectionId: string
+): Promise<CollectionSettings | null> {
+  const config = await loadCollectionsConfig(basePath);
+  const node = findNodeById(config.collections, collectionId);
+
+  if (!node || node.type !== 'collection') {
+    return null;
+  }
+
+  return node.settings || null;
 }
 
 // ============================================================================

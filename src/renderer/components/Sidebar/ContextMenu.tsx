@@ -4,6 +4,7 @@ import { CollectionNode } from '../../../core/types';
 export type ContextMenuAction = 
   | 'add-request' 
   | 'add-collection' 
+  | 'settings'
   | 'rename' 
   | 'delete' 
   | 'move-to'
@@ -142,6 +143,17 @@ export function ContextMenu({
               <line x1="9" y1="14" x2="15" y2="14" />
             </svg>
             <span>Add Collection</span>
+          </div>
+          <div className="context-menu-separator" />
+          <div
+            className="context-menu-item"
+            onClick={(e) => handleItemClick('settings', e)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
+            </svg>
+            <span>Settings</span>
           </div>
           <div className="context-menu-separator" />
         </>
