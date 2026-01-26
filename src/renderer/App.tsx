@@ -528,12 +528,39 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>REST Client</h1>
-        {activeEnvironment && (
+        {environments.length > 1 ? (
+          <div className="app-header-environment-name">
+            <select
+              className="app-header-environment-select"
+              value={activeEnvironment?.id || ''}
+              onChange={(e) => handleSetActiveEnvironment(e.target.value || null)}
+              title="Select active environment"
+            >
+              <option value="">None</option>
+              {environments.map((env) => (
+                <option key={env.id} value={env.id}>
+                  {env.name}
+                </option>
+              ))}
+            </select>
+            <svg
+              className="app-header-environment-dropdown-icon"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+        ) : activeEnvironment ? (
           <div className="app-header-environment-name" title={`Active: ${activeEnvironment.name}`}>
             <span className="app-header-environment-badge">●</span>
             {activeEnvironment.name}
           </div>
-        )}
+        ) : null}
         {selectedRequestName && (
           <div className="app-header-request-name" title={selectedRequestName}>
             {selectedRequestName}
