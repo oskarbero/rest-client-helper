@@ -19,9 +19,13 @@ import {
   setActiveEnvironment,
   getActiveEnvironment,
   loadEnvironmentsConfig,
-  saveEnvironmentsConfig
+  saveEnvironmentsConfig,
+  loadCollectionsConfig,
+  saveCollectionsConfig
 } from '../core/storage';
 import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
+import { parseOpenAPI3 } from '../core/openapi3-parser';
+import { exportToOpenAPI3 } from '../core/openapi3-exporter';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -224,5 +228,124 @@ export function registerIpcHandlers(): void {
 
     // Not linked to file, return as-is with stored variables
     return environment;
+  });
+
+  // OpenAPI 3 import/export handlers
+  ipcMain.handle('openapi3:import', async (): Promise<CollectionNode[]> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Import OpenAPI 3 Specification',
+      filters: [
+        { name: 'OpenAPI Files', extensions: ['json', 'yaml', 'yml'] },
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'YAML Files', extensions: ['yaml', 'yml'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+      return [];
+    }
+
+    const filePath = result.filePaths[0];
+    const content = await fs.promises.readFile(filePath, 'utf-8');
+
+    // Parse file content (JSON or YAML)
+    let spec: any;
+    const fileExt = filePath.toLowerCase();
+    if (fileExt.endsWith('.yaml') || fileExt.endsWith('.yml')) {
+      // Try to load js-yaml dynamically
+      try {
+        const yaml = await import('js-yaml');
+        spec = yaml.load(content);
+      } catch (error) {
+        throw new Error('YAML parsing requires js-yaml package. Please install it: npm install js-yaml @types/js-yaml');
+      }
+    } else {
+      // JSON
+      try {
+        spec = JSON.parse(content);
+      } catch (error) {
+        throw new Error(`Failed to parse JSON file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Validate OpenAPI version
+    if (!spec.openapi || !spec.openapi.startsWith('3.')) {
+      throw new Error('This file does not appear to be an OpenAPI 3.0 specification');
+    }
+
+    // Parse OpenAPI spec to CollectionNodes
+    const importedNodes = parseOpenAPI3(spec);
+
+    // Save imported collections to storage
+    const config = await loadCollectionsConfig(userDataPath);
+    
+    // Add imported collections to existing collections
+    for (const node of importedNodes) {
+      config.collections.push(node);
+    }
+
+    await saveCollectionsConfig(userDataPath, config);
+
+    return importedNodes;
+  });
+
+  ipcMain.handle('openapi3:export', async (_event, collectionIds?: string[]): Promise<void> => {
+    const config = await loadCollectionsConfig(userDataPath);
+    
+    let collectionsToExport: CollectionNode[] = [];
+    
+    if (collectionIds && collectionIds.length > 0) {
+      // Export specific collections
+      const findNodeById = (nodes: CollectionNode[], id: string): CollectionNode | null => {
+        for (const node of nodes) {
+          if (node.id === id) return node;
+          if (node.children) {
+            const found = findNodeById(node.children, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      for (const id of collectionIds) {
+        const node = findNodeById(config.collections, id);
+        if (node) {
+          collectionsToExport.push(node);
+        }
+      }
+    } else {
+      // Export all collections
+      collectionsToExport = config.collections;
+    }
+
+    if (collectionsToExport.length === 0) {
+      throw new Error('No collections selected for export');
+    }
+
+    // Determine title and version from first collection
+    const title = collectionsToExport[0]?.name || 'REST Client Collection';
+    const version = '1.0.0';
+
+    // Export to OpenAPI 3 format
+    const spec = exportToOpenAPI3(collectionsToExport, title, version);
+
+    // Show save dialog
+    const result = await dialog.showSaveDialog({
+      title: 'Export OpenAPI 3 Specification',
+      defaultPath: `${title.replace(/[^a-z0-9]/gi, '_')}.json`,
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return;
+    }
+
+    // Write file
+    await fs.promises.writeFile(result.filePath, JSON.stringify(spec, null, 2), 'utf-8');
   });
 }

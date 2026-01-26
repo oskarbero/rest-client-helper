@@ -30,6 +30,9 @@ export interface ElectronAPI {
   unlinkEnvironmentFromEnvFile: (environmentId: string) => Promise<void>;
   readVariablesFromEnvFile: (filePath: string) => Promise<EnvironmentVariable[]>;
   getEnvironmentWithVariables: (environmentId: string) => Promise<Environment | null>;
+  // OpenAPI 3 import/export
+  importOpenAPI3: () => Promise<CollectionNode[]>;
+  exportOpenAPI3: (collectionIds?: string[]) => Promise<void>;
 }
 
 // Expose protected methods to the renderer process
@@ -66,4 +69,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   unlinkEnvironmentFromEnvFile: (environmentId: string) => ipcRenderer.invoke('environment:unlinkEnvFile', environmentId),
   readVariablesFromEnvFile: (filePath: string) => ipcRenderer.invoke('environment:readVariablesFromFile', filePath),
   getEnvironmentWithVariables: (environmentId: string) => ipcRenderer.invoke('environment:getWithVariables', environmentId),
+  // OpenAPI 3 import/export
+  importOpenAPI3: () => ipcRenderer.invoke('openapi3:import'),
+  exportOpenAPI3: (collectionIds?: string[]) => ipcRenderer.invoke('openapi3:export', collectionIds),
 } as ElectronAPI);

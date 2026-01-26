@@ -458,6 +458,33 @@ function App() {
     }
   }, [showToast]);
 
+  const handleImportOpenAPI3 = useCallback(async () => {
+    try {
+      const importedNodes = await window.electronAPI.importOpenAPI3();
+      // Refresh the tree
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      if (importedNodes.length > 0) {
+        showToast(`Imported ${importedNodes.length} collection(s) from OpenAPI 3`, 'success');
+      }
+    } catch (error) {
+      console.error('Failed to import OpenAPI 3:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import OpenAPI 3';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
+  const handleExportOpenAPI3 = useCallback(async (collectionIds?: string[]) => {
+    try {
+      await window.electronAPI.exportOpenAPI3(collectionIds);
+      showToast('Collection exported successfully', 'success');
+    } catch (error) {
+      console.error('Failed to export OpenAPI 3:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export OpenAPI 3';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
   const handleNewRequest = useCallback(() => {
     setRequest(createEmptyRequest());
     setOriginalRequest(null);
@@ -823,6 +850,8 @@ function App() {
                 triggerSaveForm={triggerSaveForm}
                 onSaveFormTriggered={() => setTriggerSaveForm(false)}
                 hasUnsavedChanges={hasUnsavedChanges}
+                onImportOpenAPI3={handleImportOpenAPI3}
+                onExportOpenAPI3={handleExportOpenAPI3}
                 environments={environments}
                 activeEnvironmentId={activeEnvironment?.id || null}
                 selectedEnvironmentId={selectedEnvironmentId}
