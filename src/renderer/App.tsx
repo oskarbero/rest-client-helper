@@ -43,6 +43,13 @@ function App() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
+        // Check if electronAPI is available
+        if (!window.electronAPI) {
+          console.error('electronAPI is not available. Make sure preload script is loaded.');
+          setIsInitialized(true);
+          return;
+        }
+
         // Load session state
         const savedRequest = await window.electronAPI.loadState();
         setRequest(savedRequest);

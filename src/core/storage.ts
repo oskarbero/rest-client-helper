@@ -103,10 +103,15 @@ export async function listRequests(basePath: string): Promise<SavedRequest[]> {
     try {
       const content = fs.readFileSync(path.join(collectionsPath, file), 'utf-8');
       const request = JSON.parse(content) as SavedRequest;
-      requests.push(request);
-    } catch {
+      // Validate that the request has the required structure
+      if (request && request.id && request.name && request.request && request.request.method) {
+        requests.push(request);
+      } else {
+        console.warn(`Skipping invalid request file ${file}: missing required fields`);
+      }
+    } catch (error) {
       // Skip invalid files
-      console.error(`Failed to parse ${file}`);
+      console.error(`Failed to parse ${file}:`, error);
     }
   }
 

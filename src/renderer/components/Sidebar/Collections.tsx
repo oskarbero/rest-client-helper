@@ -190,7 +190,9 @@ export function Collections({
             </p>
           </div>
         ) : (
-          requests.map((req) => (
+          requests
+            .filter((req) => req && req.request) // Filter out invalid requests
+            .map((req) => (
             <div
               key={req.id}
               className={`collection-item ${currentRequestId === req.id ? 'active' : ''}`}
@@ -210,15 +212,15 @@ export function Collections({
               ) : (
                 <>
                   <div className="collection-item-header">
-                    <span className={`collection-method ${getMethodColor(req.request.method)}`}>
-                      {req.request.method}
+                    <span className={`collection-method ${getMethodColor(req.request?.method || 'GET')}`}>
+                      {req.request?.method || 'GET'}
                     </span>
                     <span className="collection-name" title={req.name}>
                       {req.name}
                     </span>
                   </div>
-                  <div className="collection-item-url" title={req.request.url}>
-                    {req.request.url || 'No URL'}
+                  <div className="collection-item-url" title={req.request?.url}>
+                    {req.request?.url || 'No URL'}
                   </div>
                   <div className="collection-item-footer">
                     <span className="collection-date">{formatDate(req.updatedAt)}</span>
