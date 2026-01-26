@@ -58,7 +58,7 @@ export interface HttpResponse {
   size: number;
 }
 
-// Saved request for collections
+// Saved request for collections (kept for backward compatibility)
 export interface SavedRequest {
   id: string;
   name: string;
@@ -67,11 +67,30 @@ export interface SavedRequest {
   updatedAt: string;
 }
 
-// Collection of saved requests
+// Collection of saved requests (deprecated - use CollectionNode instead)
 export interface Collection {
   id: string;
   name: string;
   requests: SavedRequest[];
+}
+
+// Collection node that can contain both requests and sub-collections
+export interface CollectionNode {
+  id: string;
+  name: string;
+  type: 'collection' | 'request';
+  createdAt: string;
+  updatedAt: string;
+  // For collections
+  children?: CollectionNode[];
+  // For requests
+  request?: HttpRequest;
+}
+
+// Root collections structure
+export interface CollectionsConfig {
+  version: string; // For future migrations
+  collections: CollectionNode[];
 }
 
 // Recent request entry (for history)

@@ -4,7 +4,7 @@ import { UrlBar } from './components/RequestPanel/UrlBar';
 import { RequestTabs } from './components/RequestPanel/RequestTabs';
 import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
-import { HttpRequest, HttpResponse, HttpMethod, SavedRequest, RecentRequest, createEmptyRequest } from '../core/types';
+import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, createEmptyRequest } from '../core/types';
 
 // Toast notification type
 interface Toast {
@@ -21,8 +21,14 @@ function App() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Collections state
-  const [savedRequests, setSavedRequests] = useState<SavedRequest[]>([]);
+  const [collectionsTree, setCollectionsTree] = useState<CollectionNode[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  
+  // Track unsaved changes
+  const [originalRequest, setOriginalRequest] = useState<HttpRequest | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [triggerSaveForm, setTriggerSaveForm] = useState(false);
 
   // Recent requests history
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
@@ -54,9 +60,9 @@ function App() {
         const savedRequest = await window.electronAPI.loadState();
         setRequest(savedRequest);
 
-        // Load saved collections
-        const collections = await window.electronAPI.listCollection();
-        setSavedRequests(collections);
+        // Load saved collections tree
+        const collections = await window.electronAPI.getCollectionsTree();
+        setCollectionsTree(collections);
       } catch (error) {
         console.error('Failed to load initial data:', error);
       } finally {
@@ -66,6 +72,18 @@ function App() {
 
     loadInitialData();
   }, []);
+
+  // Track unsaved changes by comparing current request with original
+  useEffect(() => {
+    if (!originalRequest) {
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    const currentStr = JSON.stringify(request);
+    const originalStr = JSON.stringify(originalRequest);
+    setHasUnsavedChanges(currentStr !== originalStr);
+  }, [request, originalRequest]);
 
   // Save state when request changes (debounced)
   useEffect(() => {
@@ -92,27 +110,6 @@ function App() {
     };
   }, [request, isInitialized]);
 
-  // Global keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Enter or Cmd+Enter to send request
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (!isLoading && request.url) {
-          handleSend();
-        }
-      }
-      // Ctrl+N or Cmd+N for new request
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        handleNewRequest();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLoading, request.url]);
-
   const handleUrlChange = (url: string) => {
     setRequest((prev) => ({ ...prev, url }));
   };
@@ -129,7 +126,7 @@ function App() {
     setRequest(updatedRequest);
   };
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!request.url) return;
 
     setIsLoading(true);
@@ -174,76 +171,210 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [request]);
 
   // Collection handlers
-  const handleSaveToCollection = useCallback(async (name: string) => {
+  const handleSaveToCollection = useCallback(async (name: string, parentId?: string) => {
     try {
-      const saved = await window.electronAPI.saveToCollection(name, request, currentRequestId || undefined);
+      const saved = await window.electronAPI.saveRequestToCollection(
+        name,
+        request,
+        parentId,
+        undefined // Always create new request, never update existing
+      );
       setCurrentRequestId(saved.id);
-      // Refresh the list
-      const collections = await window.electronAPI.listCollection();
-      setSavedRequests(collections);
+      // Update original request to match saved version
+      const requestCopy = JSON.parse(JSON.stringify(request));
+      setOriginalRequest(requestCopy);
+      setHasUnsavedChanges(false);
+      // Refresh the tree
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
       showToast(`Request "${name}" saved`, 'success');
     } catch (error) {
       console.error('Failed to save request:', error);
-      showToast('Failed to save request', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save request';
+      showToast(errorMessage, 'error');
     }
-  }, [request, currentRequestId, showToast]);
+  }, [request, showToast]);
 
-  const handleSelectFromCollection = useCallback((savedRequest: SavedRequest) => {
-    setRequest(savedRequest.request);
-    setCurrentRequestId(savedRequest.id);
-    setResponse(null);
+  const handleSelectFromCollection = useCallback((node: CollectionNode) => {
+    if (node.type === 'request' && node.request) {
+      const requestCopy = JSON.parse(JSON.stringify(node.request));
+      setRequest(requestCopy);
+      setOriginalRequest(requestCopy);
+      setCurrentRequestId(node.id);
+      setHasUnsavedChanges(false);
+      setResponse(null);
+    }
   }, []);
 
   const handleDeleteFromCollection = useCallback(async (id: string) => {
-    // Find the request name for the toast
-    const requestToDelete = savedRequests.find(r => r.id === id);
-    
-    // Confirmation dialog
-    if (!window.confirm(`Delete "${requestToDelete?.name || 'this request'}"? This cannot be undone.`)) {
-      return;
-    }
-
     try {
-      await window.electronAPI.deleteFromCollection(id);
+      await window.electronAPI.deleteCollectionNode(id);
       // Clear current ID if we deleted the active request
       if (currentRequestId === id) {
         setCurrentRequestId(null);
       }
-      // Refresh the list
-      const collections = await window.electronAPI.listCollection();
-      setSavedRequests(collections);
-      showToast('Request deleted', 'info');
+      // Refresh the tree
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      showToast('Deleted', 'info');
     } catch (error) {
-      console.error('Failed to delete request:', error);
-      showToast('Failed to delete request', 'error');
+      console.error('Failed to delete:', error);
+      showToast('Failed to delete', 'error');
     }
-  }, [currentRequestId, savedRequests, showToast]);
+  }, [currentRequestId, showToast]);
 
   const handleRenameInCollection = useCallback(async (id: string, newName: string) => {
     try {
-      await window.electronAPI.renameInCollection(id, newName);
-      // Refresh the list
-      const collections = await window.electronAPI.listCollection();
-      setSavedRequests(collections);
-      showToast('Request renamed', 'success');
+      await window.electronAPI.renameCollectionNode(id, newName);
+      // Refresh the tree
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      showToast('Renamed', 'success');
     } catch (error) {
-      console.error('Failed to rename request:', error);
-      showToast('Failed to rename request', 'error');
+      console.error('Failed to rename:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to rename';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
+  const handleCreateCollection = useCallback(async (name: string, parentId?: string) => {
+    try {
+      await window.electronAPI.createCollection(name, parentId);
+      // Refresh the tree
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      // Auto-expand the parent if provided
+      if (parentId) {
+        setExpandedNodes(prev => new Set(prev).add(parentId));
+      }
+      showToast(`Collection "${name}" created`, 'success');
+    } catch (error) {
+      console.error('Failed to create collection:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create collection';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleMoveNode = useCallback(async (id: string, newParentId?: string) => {
+    try {
+      await window.electronAPI.moveCollectionNode(id, newParentId);
+      // Refresh the tree
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      showToast('Moved', 'success');
+    } catch (error) {
+      console.error('Failed to move:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to move';
+      showToast(errorMessage, 'error');
     }
   }, [showToast]);
 
   const handleNewRequest = useCallback(() => {
     setRequest(createEmptyRequest());
+    setOriginalRequest(null);
     setCurrentRequestId(null);
+    setHasUnsavedChanges(false);
     setResponse(null);
   }, []);
 
+  const findNodeById = useCallback((nodes: CollectionNode[], id: string): CollectionNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeById(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, []);
+
+  // Quick save handler - saves existing request or triggers save form for new requests
+  const handleQuickSave = useCallback(async () => {
+    if (currentRequestId) {
+      // Save existing request with its current name
+      if (!hasUnsavedChanges) {
+        // No changes to save
+        return;
+      }
+      const node = findNodeById(collectionsTree, currentRequestId);
+      if (node && node.type === 'request') {
+        try {
+          const saved = await window.electronAPI.saveRequestToCollection(
+            node.name,
+            request,
+            undefined, // Keep in same parent
+            currentRequestId
+          );
+          // Update original request to match saved version
+          const requestCopy = JSON.parse(JSON.stringify(request));
+          setOriginalRequest(requestCopy);
+          setHasUnsavedChanges(false);
+          // Refresh the tree
+          const collections = await window.electronAPI.getCollectionsTree();
+          setCollectionsTree(collections);
+          showToast(`Request "${node.name}" saved`, 'success');
+        } catch (error) {
+          console.error('Failed to save request:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Failed to save request';
+          showToast(errorMessage, 'error');
+        }
+      }
+    } else {
+      // New request - trigger save form
+      setTriggerSaveForm(true);
+    }
+  }, [hasUnsavedChanges, currentRequestId, request, collectionsTree, findNodeById, showToast]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Enter or Cmd+Enter to send request
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isLoading && request.url) {
+          handleSend();
+        }
+      }
+      // Ctrl+N or Cmd+N for new request
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        handleNewRequest();
+      }
+      // Ctrl+S or Cmd+S to save request
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleQuickSave();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLoading, request.url, handleQuickSave, handleNewRequest, handleSend]);
+
+  const selectedRequestName = currentRequestId
+    ? findNodeById(collectionsTree, currentRequestId)?.name ?? null
+    : null;
+
   const handleSelectFromRecent = useCallback((recentRequest: RecentRequest) => {
     setRequest(recentRequest.request);
+    setOriginalRequest(null);
     setCurrentRequestId(null);
+    setHasUnsavedChanges(false);
     setResponse(recentRequest.response || null);
   }, []);
 
@@ -255,6 +386,26 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>REST Client</h1>
+        {selectedRequestName && (
+          <div className="app-header-request-name" title={selectedRequestName}>
+            {selectedRequestName}
+          </div>
+        )}
+        <div className="app-header-actions">
+          <button
+            className="save-button"
+            onClick={handleQuickSave}
+            disabled={currentRequestId ? !hasUnsavedChanges : false}
+            title={currentRequestId ? (hasUnsavedChanges ? 'Save changes (Ctrl+S)' : 'No changes to save') : 'Save as new request (Ctrl+S)'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            {currentRequestId ? 'Save' : 'Save As...'}
+          </button>
+        </div>
         <div className="app-header-hint">
           <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
         </div>
@@ -264,9 +415,10 @@ function App() {
           <Panel defaultSize={20} minSize={15} maxSize={40} className="sidebar-panel">
             <aside className="app-sidebar">
               <Collections
-                requests={savedRequests}
+                collectionsTree={collectionsTree}
                 recentRequests={recentRequests}
                 currentRequestId={currentRequestId}
+                expandedNodes={expandedNodes}
                 onSelect={handleSelectFromCollection}
                 onSelectRecent={handleSelectFromRecent}
                 onSave={handleSaveToCollection}
@@ -274,6 +426,12 @@ function App() {
                 onRename={handleRenameInCollection}
                 onNew={handleNewRequest}
                 onClearRecent={handleClearRecent}
+                onCreateCollection={handleCreateCollection}
+                onToggleExpand={handleToggleExpand}
+                onMoveNode={handleMoveNode}
+                triggerSaveForm={triggerSaveForm}
+                onSaveFormTriggered={() => setTriggerSaveForm(false)}
+                hasUnsavedChanges={hasUnsavedChanges}
               />
             </aside>
           </Panel>

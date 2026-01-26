@@ -1,4 +1,4 @@
-import type { HttpRequest, HttpResponse, SavedRequest } from '../../core/types';
+import type { HttpRequest, HttpResponse, CollectionNode } from '../../core/types';
 
 export interface ElectronAPI {
   // HTTP requests
@@ -6,12 +6,13 @@ export interface ElectronAPI {
   // Session state persistence
   saveState: (request: HttpRequest) => Promise<void>;
   loadState: () => Promise<HttpRequest>;
-  // Collections (saved requests)
-  saveToCollection: (name: string, request: HttpRequest, existingId?: string) => Promise<SavedRequest>;
-  loadFromCollection: (id: string) => Promise<SavedRequest | null>;
-  listCollection: () => Promise<SavedRequest[]>;
-  deleteFromCollection: (id: string) => Promise<boolean>;
-  renameInCollection: (id: string, newName: string) => Promise<SavedRequest | null>;
+  // Collections (tree-based)
+  getCollectionsTree: () => Promise<CollectionNode[]>;
+  createCollection: (name: string, parentId?: string) => Promise<CollectionNode>;
+  saveRequestToCollection: (name: string, request: HttpRequest, parentId?: string, existingId?: string) => Promise<CollectionNode>;
+  deleteCollectionNode: (id: string) => Promise<boolean>;
+  renameCollectionNode: (id: string, newName: string) => Promise<CollectionNode | null>;
+  moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
 }
 
 declare global {

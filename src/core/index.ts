@@ -15,9 +15,12 @@ export {
   getHighlightedTokens 
 } from './response-parser';
 export {
-  saveRequest,
-  loadRequest,
-  listRequests,
-  deleteRequest,
-  renameRequest
+  loadCollectionsConfig,
+  saveCollectionsConfig,
+  getCollectionsTree,
+  createCollection,
+  saveRequestToCollection,
+  deleteCollectionNode,
+  renameCollectionNode,
+  moveCollectionNode
 } from './storage';

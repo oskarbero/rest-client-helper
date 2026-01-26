@@ -38,12 +38,54 @@ body {
   padding: 12px 20px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .app-header h1 {
   font-size: 18px;
   font-weight: 500;
   color: var(--accent-blue);
+  margin: 0;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.save-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-button:hover:not(:disabled) {
+  background-color: #4a8bc9;
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.save-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .app-main {
@@ -1188,6 +1230,10 @@ body {
   gap: 8px;
 }
 
+.save-request-form-wrapper .save-request-form {
+  border-bottom: none;
+}
+
 .save-request-input {
   padding: 8px 10px;
   background-color: var(--bg-input);
@@ -1440,6 +1486,28 @@ body {
   border-left: 2px solid var(--accent-blue);
 }
 
+.collection-item-unsaved-indicator {
+  color: var(--accent-orange);
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 4px;
+  line-height: 1;
+}
+
+/* Collection children group with vertical line */
+.collection-children-group {
+  position: relative;
+  margin-left: 16px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color);
+}
+
+/* Adjust for nested levels - nested groups don't need extra margin */
+.collection-children-group .collection-children-group {
+  margin-left: 0;
+  padding-left: 8px;
+}
+
 .collection-item-header {
   display: flex;
   align-items: center;
@@ -1557,14 +1625,142 @@ body {
   outline: none;
 }
 
+/* Drag and Drop Styles */
+.collection-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.collection-item.dragging-this {
+  opacity: 0.3;
+}
+
+.collection-item.drag-over {
+  background-color: rgba(86, 156, 214, 0.2);
+  border: 2px dashed var(--accent-blue);
+  border-radius: 4px;
+}
+
+.collection-item.drag-over-invalid {
+  background-color: rgba(241, 76, 76, 0.1);
+  border: 2px dashed var(--accent-red);
+}
+
+.dragging-overlay {
+  padding: 10px 12px;
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+}
+
+.dragging-overlay .collection-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Context Menu Styles */
+.context-menu {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  min-width: 180px;
+  z-index: 1000;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.15s;
+  position: relative;
+}
+
+.context-menu-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.context-menu-item.context-menu-item-danger {
+  color: var(--accent-red);
+}
+
+.context-menu-item.context-menu-item-danger:hover {
+  background-color: rgba(241, 76, 76, 0.15);
+}
+
+.context-menu-item svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.context-menu-item span {
+  flex: 1;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 4px 0;
+}
+
+.context-menu-submenu {
+  position: relative;
+}
+
+.context-menu-submenu-items {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  margin-left: 4px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  min-width: 180px;
+  display: none;
+}
+
+.context-menu-submenu:hover .context-menu-submenu-items {
+  display: block;
+}
+
 /* Header Keyboard Hint */
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+}
+
+.app-header h1 {
+  flex-shrink: 0;
+}
+
+.app-header-request-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 12px;
 }
 
 .app-header-hint {
+  flex-shrink: 0;
   font-size: 11px;
   color: var(--text-secondary);
   display: flex;
