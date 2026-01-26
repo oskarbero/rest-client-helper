@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { HttpResponse } from '../../../core/types';
+import { HttpResponse, HttpRequest } from '../../../core/types';
 import { ResponseHeaders } from './ResponseHeaders';
 import { SyntaxHighlighter } from './SyntaxHighlighter';
+import { RequestDetails } from './RequestDetails';
 
 interface ResponseViewerProps {
   response: HttpResponse | null;
+  resolvedRequest: HttpRequest | null;
   isLoading: boolean;
 }
 
-type ResponseTab = 'body' | 'headers';
+type ResponseTab = 'body' | 'headers' | 'request';
 
-export function ResponseViewer({ response, isLoading }: ResponseViewerProps) {
+export function ResponseViewer({ response, resolvedRequest, isLoading }: ResponseViewerProps) {
   const [activeTab, setActiveTab] = useState<ResponseTab>('body');
 
   if (isLoading) {
@@ -19,10 +21,47 @@ export function ResponseViewer({ response, isLoading }: ResponseViewerProps) {
         <div className="response-header">
           <span className="response-title">Response</span>
         </div>
-        <div className="response-body loading">
-          <div className="loading-spinner"></div>
-          <span>Sending request...</span>
-        </div>
+        {resolvedRequest ? (
+          <div className="response-tabs">
+            <div className="response-tabs-header">
+              <button
+                className={`response-tab-button ${activeTab === 'body' ? 'active' : ''}`}
+                onClick={() => setActiveTab('body')}
+                disabled
+              >
+                Body
+              </button>
+              <button
+                className={`response-tab-button ${activeTab === 'headers' ? 'active' : ''}`}
+                onClick={() => setActiveTab('headers')}
+                disabled
+              >
+                Headers
+              </button>
+              <button
+                className={`response-tab-button ${activeTab === 'request' ? 'active' : ''}`}
+                onClick={() => setActiveTab('request')}
+              >
+                Request
+              </button>
+            </div>
+            <div className="response-tabs-content">
+              {activeTab === 'request' ? (
+                <RequestDetails request={resolvedRequest} />
+              ) : (
+                <div className="response-body loading">
+                  <div className="loading-spinner"></div>
+                  <span>Sending request...</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="response-body loading">
+            <div className="loading-spinner"></div>
+            <span>Sending request...</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -110,6 +149,12 @@ export function ResponseViewer({ response, isLoading }: ResponseViewerProps) {
               <span className="response-tab-badge">{headerCount}</span>
             )}
           </button>
+          <button
+            className={`response-tab-button ${activeTab === 'request' ? 'active' : ''}`}
+            onClick={() => setActiveTab('request')}
+          >
+            Request
+          </button>
         </div>
         
         <div className="response-tabs-content">
@@ -120,8 +165,10 @@ export function ResponseViewer({ response, isLoading }: ResponseViewerProps) {
                 contentType={response.contentType} 
               />
             </div>
-          ) : (
+          ) : activeTab === 'headers' ? (
             <ResponseHeaders headers={response.headers} />
+          ) : (
+            <RequestDetails request={resolvedRequest} />
           )}
         </div>
       </div>

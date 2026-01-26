@@ -18,6 +18,7 @@ export interface ElectronAPI {
   createEnvironment: (name: string) => Promise<Environment>;
   updateEnvironment: (id: string, name: string, variables: EnvironmentVariable[]) => Promise<Environment>;
   deleteEnvironment: (id: string) => Promise<boolean>;
+  duplicateEnvironment: (sourceId: string, newName: string) => Promise<Environment>;
   setActiveEnvironment: (id: string | null) => Promise<void>;
   getActiveEnvironment: () => Promise<Environment | null>;
 }

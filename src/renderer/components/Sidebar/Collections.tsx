@@ -28,10 +28,14 @@ interface CollectionsProps {
   // Environment props
   environments?: Environment[];
   activeEnvironmentId?: string | null;
+  selectedEnvironmentId?: string | null;
   onCreateEnvironment?: (name: string) => void;
   onUpdateEnvironment?: (id: string, name: string, variables: EnvironmentVariable[]) => void;
   onDeleteEnvironment?: (id: string) => void;
+  onDuplicateEnvironment?: (sourceId: string, newName: string) => void;
   onSetActiveEnvironment?: (id: string | null) => void;
+  onTabChange?: (tab: 'recent' | 'environments' | 'collections') => void;
+  onEnvironmentSelect?: (id: string | null) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -423,13 +427,28 @@ export function Collections({
   hasUnsavedChanges = false,
   environments = [],
   activeEnvironmentId = null,
+  selectedEnvironmentId = null,
   onCreateEnvironment,
   onUpdateEnvironment,
   onDeleteEnvironment,
+  onDuplicateEnvironment,
   onSetActiveEnvironment,
+  onTabChange,
+  onEnvironmentSelect,
   showToast,
 }: CollectionsProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
+  
+  // Notify parent when tab changes
+  useEffect(() => {
+    onTabChange?.(activeTab);
+    
+    // Auto-select active environment when environments tab opens
+    if (activeTab === 'environments' && activeEnvironmentId && !selectedEnvironmentId) {
+      onEnvironmentSelect?.(activeEnvironmentId);
+    }
+  }, [activeTab, activeEnvironmentId, selectedEnvironmentId, onTabChange, onEnvironmentSelect]);
+  
   const [isNaming, setIsNaming] = useState(false);
   const [isNamingCollection, setIsNamingCollection] = useState(false);
   const [newName, setNewName] = useState('');
@@ -972,10 +991,13 @@ export function Collections({
          <Environments
            environments={environments}
            activeEnvironmentId={activeEnvironmentId || null}
+           selectedEnvironmentId={selectedEnvironmentId || null}
            onCreate={onCreateEnvironment || (() => {})}
            onUpdate={onUpdateEnvironment || (() => {})}
            onDelete={onDeleteEnvironment || (() => {})}
+           onDuplicate={onDuplicateEnvironment || (() => {})}
            onSetActive={onSetActiveEnvironment || (() => {})}
+           onSelect={onEnvironmentSelect || (() => {})}
            showToast={showToast}
          />
        ) : renderCollections()}

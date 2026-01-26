@@ -616,6 +616,40 @@ export async function deleteEnvironment(
 }
 
 /**
+ * Duplicates an environment with a new name
+ */
+export async function duplicateEnvironment(
+  basePath: string,
+  sourceId: string,
+  newName: string
+): Promise<Environment> {
+  const config = await loadEnvironmentsConfig(basePath);
+  const sourceEnvironment = config.environments.find(env => env.id === sourceId);
+
+  if (!sourceEnvironment) {
+    throw new Error(`Environment with id ${sourceId} not found`);
+  }
+
+  // Validate name uniqueness
+  if (config.environments.some(env => env.name === newName)) {
+    throw new Error(`An environment with name "${newName}" already exists`);
+  }
+
+  const now = new Date().toISOString();
+  const duplicatedEnvironment: Environment = {
+    id: generateId(),
+    name: newName,
+    variables: JSON.parse(JSON.stringify(sourceEnvironment.variables)), // Deep copy
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  config.environments.push(duplicatedEnvironment);
+  await saveEnvironmentsConfig(basePath, config);
+  return duplicatedEnvironment;
+}
+
+/**
  * Sets the active environment
  */
 export async function setActiveEnvironment(

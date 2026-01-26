@@ -12,6 +12,7 @@ import {
   createEnvironment,
   updateEnvironment,
   deleteEnvironment,
+  duplicateEnvironment,
   setActiveEnvironment,
   getActiveEnvironment
 } from '../core/storage';
@@ -77,6 +78,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('environment:delete', async (_event, id: string): Promise<boolean> => {
     return deleteEnvironment(userDataPath, id);
+  });
+
+  ipcMain.handle('environment:duplicate', async (_event, sourceId: string, newName: string): Promise<Environment> => {
+    return duplicateEnvironment(userDataPath, sourceId, newName);
   });
 
   ipcMain.handle('environment:setActive', async (_event, id: string | null): Promise<void> => {

@@ -4,6 +4,7 @@ import { UrlBar } from './components/RequestPanel/UrlBar';
 import { RequestTabs } from './components/RequestPanel/RequestTabs';
 import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
+import { EnvironmentEditor } from './components/EnvironmentEditor/EnvironmentEditor';
 import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, createEmptyRequest } from '../core/types';
 import { resolveRequestVariables } from '../core/variable-replacer';
 
@@ -17,6 +18,7 @@ interface Toast {
 function App() {
   const [request, setRequest] = useState<HttpRequest>(createEmptyRequest());
   const [response, setResponse] = useState<HttpResponse | null>(null);
+  const [resolvedRequest, setResolvedRequest] = useState<HttpRequest | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -37,6 +39,8 @@ function App() {
   // Environment state
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [activeEnvironment, setActiveEnvironment] = useState<Environment | null>(null);
+  const [isEnvironmentsTabActive, setIsEnvironmentsTabActive] = useState(false);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
 
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -144,12 +148,17 @@ function App() {
 
     setIsLoading(true);
     setResponse(null);
+    setResolvedRequest(null);
 
     try {
-      // Resolve variables before sending
-      const resolvedRequest = resolveRequestVariables(request, activeEnvironment);
+      // Fetch active environment dynamically to ensure we always have the latest values
+      const currentActiveEnvironment = await window.electronAPI.getActiveEnvironment();
       
-      const result = await window.electronAPI.sendRequest(resolvedRequest);
+      // Resolve variables before sending
+      const resolved = resolveRequestVariables(request, currentActiveEnvironment);
+      setResolvedRequest(resolved);
+      
+      const result = await window.electronAPI.sendRequest(resolved);
       setResponse(result);
       
       // Add to recent requests history (store original request, not resolved)
@@ -356,9 +365,25 @@ function App() {
     }
   }, [hasUnsavedChanges, currentRequestId, request, collectionsTree, findNodeById, showToast]);
 
+  // Get selected environment for editing
+  const selectedEnvironment = selectedEnvironmentId
+    ? environments.find(env => env.id === selectedEnvironmentId) || null
+    : null;
+
+  // Handle environment save (for Ctrl+S when editing environment)
+  const handleEnvironmentSave = useCallback(async () => {
+    // This will be handled by EnvironmentEditor component's keyboard handler
+    // We just need to ensure the handler doesn't conflict
+  }, []);
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // If environments tab is active, skip Ctrl+S handling (let EnvironmentEditor handle it)
+      if (isEnvironmentsTabActive && selectedEnvironment && (e.ctrlKey || e.metaKey) && e.key === 's') {
+        return; // Let EnvironmentEditor component handle this
+      }
+      
       // Ctrl+Enter or Cmd+Enter to send request
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
@@ -371,7 +396,7 @@ function App() {
         e.preventDefault();
         handleNewRequest();
       }
-      // Ctrl+S or Cmd+S to save request
+      // Ctrl+S or Cmd+S to save request (only if not in environments tab)
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         handleQuickSave();
@@ -380,7 +405,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLoading, request.url, handleQuickSave, handleNewRequest, handleSend]);
+  }, [isLoading, request.url, handleQuickSave, handleNewRequest, handleSend, isEnvironmentsTabActive, selectedEnvironment]);
 
   const selectedRequestName = currentRequestId
     ? findNodeById(collectionsTree, currentRequestId)?.name ?? null
@@ -424,13 +449,21 @@ function App() {
         const updatedActive = await window.electronAPI.getActiveEnvironment();
         setActiveEnvironment(updatedActive);
       }
+      
+      // Update selected environment if it was the one being edited
+      if (selectedEnvironmentId === id) {
+        const updatedEnv = updatedEnvs.find(env => env.id === id);
+        if (updatedEnv) {
+          // EnvironmentEditor will update its state via useEffect
+        }
+      }
     } catch (error) {
       console.error('Failed to update environment:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update environment';
       showToast(errorMessage, 'error');
       throw error;
     }
-  }, [activeEnvironment, showToast]);
+  }, [activeEnvironment, selectedEnvironmentId, showToast]);
 
   const handleDeleteEnvironment = useCallback(async (id: string) => {
     try {
@@ -450,6 +483,20 @@ function App() {
     }
   }, [activeEnvironment, showToast]);
 
+  const handleDuplicateEnvironment = useCallback(async (sourceId: string, newName: string) => {
+    try {
+      await window.electronAPI.duplicateEnvironment(sourceId, newName);
+      const updatedEnvs = await window.electronAPI.getEnvironments();
+      setEnvironments(updatedEnvs);
+      showToast(`Environment "${newName}" created`, 'success');
+    } catch (error) {
+      console.error('Failed to duplicate environment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to duplicate environment';
+      showToast(errorMessage, 'error');
+      throw error;
+    }
+  }, [showToast]);
+
   const handleSetActiveEnvironment = useCallback(async (id: string | null) => {
     try {
       await window.electronAPI.setActiveEnvironment(id);
@@ -463,10 +510,30 @@ function App() {
     }
   }, [showToast]);
 
+  // Handle tab changes from Collections
+  const handleTabChange = useCallback((tab: 'recent' | 'environments' | 'collections') => {
+    setIsEnvironmentsTabActive(tab === 'environments');
+    // When switching away from environments tab, clear selection
+    if (tab !== 'environments') {
+      setSelectedEnvironmentId(null);
+    }
+  }, []);
+
+  // Handle environment selection from sidebar
+  const handleEnvironmentSelect = useCallback((id: string | null) => {
+    setSelectedEnvironmentId(id);
+  }, []);
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>REST Client</h1>
+        {activeEnvironment && (
+          <div className="app-header-environment-name" title={`Active: ${activeEnvironment.name}`}>
+            <span className="app-header-environment-badge">●</span>
+            {activeEnvironment.name}
+          </div>
+        )}
         {selectedRequestName && (
           <div className="app-header-request-name" title={selectedRequestName}>
             {selectedRequestName}
@@ -515,44 +582,60 @@ function App() {
                 hasUnsavedChanges={hasUnsavedChanges}
                 environments={environments}
                 activeEnvironmentId={activeEnvironment?.id || null}
+                selectedEnvironmentId={selectedEnvironmentId}
                 onCreateEnvironment={handleCreateEnvironment}
                 onUpdateEnvironment={handleUpdateEnvironment}
                 onDeleteEnvironment={handleDeleteEnvironment}
+                onDuplicateEnvironment={handleDuplicateEnvironment}
                 onSetActiveEnvironment={handleSetActiveEnvironment}
+                onTabChange={handleTabChange}
+                onEnvironmentSelect={handleEnvironmentSelect}
                 showToast={showToast}
               />
             </aside>
           </Panel>
           <PanelResizeHandle className="resize-handle-horizontal" />
           <Panel minSize={50}>
-            <PanelGroup direction="vertical" autoSaveId="main-vertical">
-              <Panel defaultSize={50} minSize={20} className="request-panel">
-                <main className="app-main">
-                  <div className="request-section">
-                    <UrlBar
-                      url={request.url}
-                      method={request.method}
-                      queryParams={request.queryParams}
-                      onUrlChange={handleUrlChange}
-                      onMethodChange={handleMethodChange}
-                      onQueryParamsChange={handleQueryParamsChange}
-                      onSend={handleSend}
-                      isLoading={isLoading}
-                    />
-                    <RequestTabs
-                      request={request}
-                      onRequestChange={handleRequestChange}
-                    />
-                  </div>
-                </main>
-              </Panel>
-              <PanelResizeHandle className="resize-handle-vertical" />
-              <Panel minSize={20} className="response-panel-wrapper">
-                <div className="response-section">
-                  <ResponseViewer response={response} isLoading={isLoading} />
+            {isEnvironmentsTabActive ? (
+              <main className="app-main">
+                <div className="environment-editor-section">
+                  <EnvironmentEditor
+                    environment={selectedEnvironment}
+                    onUpdate={handleUpdateEnvironment}
+                    showToast={showToast}
+                  />
                 </div>
-              </Panel>
-            </PanelGroup>
+              </main>
+            ) : (
+              <PanelGroup direction="vertical" autoSaveId="main-vertical">
+                <Panel defaultSize={50} minSize={20} className="request-panel">
+                  <main className="app-main">
+                    <div className="request-section">
+                      <UrlBar
+                        url={request.url}
+                        method={request.method}
+                        queryParams={request.queryParams}
+                        onUrlChange={handleUrlChange}
+                        onMethodChange={handleMethodChange}
+                        onQueryParamsChange={handleQueryParamsChange}
+                        onSend={handleSend}
+                        isLoading={isLoading}
+                      />
+                      <RequestTabs
+                        request={request}
+                        onRequestChange={handleRequestChange}
+                      />
+                    </div>
+                  </main>
+                </Panel>
+                <PanelResizeHandle className="resize-handle-vertical" />
+                <Panel minSize={20} className="response-panel-wrapper">
+                  <div className="response-section">
+                    <ResponseViewer response={response} resolvedRequest={resolvedRequest} isLoading={isLoading} />
+                  </div>
+                </Panel>
+              </PanelGroup>
+            )}
           </Panel>
         </PanelGroup>
       </div>

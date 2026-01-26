@@ -20,6 +20,7 @@ export interface ElectronAPI {
   createEnvironment: (name: string) => Promise<Environment>;
   updateEnvironment: (id: string, name: string, variables: EnvironmentVariable[]) => Promise<Environment>;
   deleteEnvironment: (id: string) => Promise<boolean>;
+  duplicateEnvironment: (sourceId: string, newName: string) => Promise<Environment>;
   setActiveEnvironment: (id: string | null) => Promise<void>;
   getActiveEnvironment: () => Promise<Environment | null>;
 }
@@ -45,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateEnvironment: (id: string, name: string, variables: EnvironmentVariable[]) => 
     ipcRenderer.invoke('environment:update', id, name, variables),
   deleteEnvironment: (id: string) => ipcRenderer.invoke('environment:delete', id),
+  duplicateEnvironment: (sourceId: string, newName: string) => 
+    ipcRenderer.invoke('environment:duplicate', sourceId, newName),
   setActiveEnvironment: (id: string | null) => ipcRenderer.invoke('environment:setActive', id),
   getActiveEnvironment: () => ipcRenderer.invoke('environment:getActive'),
 } as ElectronAPI);
