@@ -26,6 +26,7 @@ import {
 import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
 import { parseOpenAPI3 } from '../core/openapi3-parser';
 import { exportToOpenAPI3 } from '../core/openapi3-exporter';
+import { findNodeById } from '../core/utils';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -298,17 +299,6 @@ export function registerIpcHandlers(): void {
     
     if (collectionIds && collectionIds.length > 0) {
       // Export specific collections
-      const findNodeById = (nodes: CollectionNode[], id: string): CollectionNode | null => {
-        for (const node of nodes) {
-          if (node.id === id) return node;
-          if (node.children) {
-            const found = findNodeById(node.children, id);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
       for (const id of collectionIds) {
         const node = findNodeById(config.collections, id);
         if (node) {

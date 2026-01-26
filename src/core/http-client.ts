@@ -1,10 +1,12 @@
 import { HttpRequest, HttpResponse, KeyValuePair } from './types';
 import { generateAuthHeaders, generateAuthQueryParam } from './auth-handler';
+import { CONFIG } from './constants';
+import { isValidUrl } from './utils';
 
 /**
  * Sends an HTTP request and returns the response
  */
-export async function sendRequest(request: HttpRequest): Promise<HttpResponse> {
+export async function sendRequest(request: HttpRequest, signal?: AbortSignal): Promise<HttpResponse> {
   const startTime = performance.now();
 
   try {
@@ -17,6 +19,11 @@ export async function sendRequest(request: HttpRequest): Promise<HttpResponse> {
 
     // Build the URL with query parameters
     const url = buildUrl(request.url, queryParams);
+    
+    // Validate URL
+    if (!isValidUrl(url)) {
+      throw new Error(`Invalid URL: ${url}`);
+    }
 
     // Build headers object from key-value pairs
     const headers: Record<string, string> = {};
@@ -38,10 +45,24 @@ export async function sendRequest(request: HttpRequest): Promise<HttpResponse> {
       }
     }
 
-    // Prepare fetch options
+    // Prepare fetch options with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT_MS);
+    
+    // Combine with provided signal if any
+    const abortSignal = signal 
+      ? (() => {
+          const combinedController = new AbortController();
+          signal.addEventListener('abort', () => combinedController.abort());
+          controller.signal.addEventListener('abort', () => combinedController.abort());
+          return combinedController.signal;
+        })()
+      : controller.signal;
+    
     const fetchOptions: RequestInit = {
       method: request.method,
       headers,
+      signal: abortSignal,
     };
 
     // Add body for non-GET requests (will be enhanced in Milestone 4)
@@ -58,10 +79,25 @@ export async function sendRequest(request: HttpRequest): Promise<HttpResponse> {
     }
 
     // Make the request
-    const response = await fetch(url, fetchOptions);
+    let response: Response;
+    try {
+      response = await fetch(url, fetchOptions);
+      clearTimeout(timeoutId);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout or cancelled');
+      }
+      throw error;
+    }
 
-    // Read the response body as text
+    // Read the response body as text with size limit
     const body = await response.text();
+    
+    // Check response size
+    if (body.length > CONFIG.MAX_RESPONSE_SIZE) {
+      console.warn(`Response size (${body.length} bytes) exceeds maximum (${CONFIG.MAX_RESPONSE_SIZE} bytes)`);
+    }
 
     // Calculate duration
     const duration = Math.round(performance.now() - startTime);
@@ -91,11 +127,22 @@ export async function sendRequest(request: HttpRequest): Promise<HttpResponse> {
     const duration = Math.round(performance.now() - startTime);
     
     // Return an error response
+    let errorMessage = 'Unknown error occurred';
+    if (error instanceof Error) {
+      if (error.message.includes('timeout') || error.message.includes('cancelled')) {
+        errorMessage = 'Request timeout or cancelled';
+      } else if (error.message.includes('Invalid URL')) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return {
       status: 0,
       statusText: 'Error',
       headers: {},
-      body: error instanceof Error ? error.message : 'Unknown error occurred',
+      body: errorMessage,
       contentType: 'text/plain',
       duration,
       size: 0,

@@ -10,6 +10,8 @@ import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, E
 import { resolveRequestVariables, resolveRequestWithCollectionSettings, replaceVariables } from '../core/variable-replacer';
 import { resolveCollectionSettings, findParentCollectionId, getAncestorPath } from '../core/collection-settings-resolver';
 import type { LoadedAppState } from '../core/state-persistence';
+import { CONFIG } from '../core/constants';
+import { deepEqual, findNodeById } from '../core/utils';
 
 // Toast notification type
 interface Toast {
@@ -25,6 +27,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Collections state
   const [collectionsTree, setCollectionsTree] = useState<CollectionNode[]>([]);
@@ -33,7 +36,6 @@ function App() {
   
   // Track unsaved changes
   const [originalRequest, setOriginalRequest] = useState<HttpRequest | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [triggerSaveForm, setTriggerSaveForm] = useState(false);
 
   // Recent requests history
@@ -120,18 +122,6 @@ function App() {
 
         // If we have a currentRequestId, try to load the request from the collection
         if (loadedState.currentRequestId) {
-          // Find the request node in the collections tree
-          const findNodeById = (nodes: CollectionNode[], id: string): CollectionNode | null => {
-            for (const node of nodes) {
-              if (node.id === id) return node;
-              if (node.children) {
-                const found = findNodeById(node.children, id);
-                if (found) return found;
-              }
-            }
-            return null;
-          };
-
           const requestNode = findNodeById(collections, loadedState.currentRequestId);
           
           if (requestNode && requestNode.type === 'request' && requestNode.request) {
@@ -140,7 +130,6 @@ function App() {
             setRequest(requestCopy);
             setOriginalRequest(requestCopy);
             setCurrentRequestId(loadedState.currentRequestId);
-            setHasUnsavedChanges(false);
 
             // Expand all parent collections to show the selected request
             const ancestorPath = getAncestorPath(collections, loadedState.currentRequestId);
@@ -156,14 +145,12 @@ function App() {
             setRequest(loadedState.request);
             setCurrentRequestId(null);
             setOriginalRequest(null);
-            setHasUnsavedChanges(false);
           }
         } else {
           // No saved request ID, use the saved request state (unsaved/new request)
           setRequest(loadedState.request);
           setCurrentRequestId(null);
           setOriginalRequest(null);
-          setHasUnsavedChanges(false);
         }
 
         // Load environments
@@ -184,15 +171,11 @@ function App() {
   }, []);
 
   // Track unsaved changes by comparing current request with original
-  useEffect(() => {
+  const hasUnsavedChanges = useMemo(() => {
     if (!originalRequest) {
-      setHasUnsavedChanges(false);
-      return;
+      return false;
     }
-
-    const currentStr = JSON.stringify(request);
-    const originalStr = JSON.stringify(originalRequest);
-    setHasUnsavedChanges(currentStr !== originalStr);
+    return !deepEqual(request, originalRequest);
   }, [request, originalRequest]);
 
   // Save state when request, selection, or expanded nodes change (debounced)
@@ -204,17 +187,22 @@ function App() {
       clearTimeout(saveTimeoutRef.current);
     }
 
+    let isMounted = true;
+    
     // Debounce the save to avoid excessive writes
     saveTimeoutRef.current = setTimeout(async () => {
+      if (!isMounted) return;
+      
       try {
         const expandedNodesArray = Array.from(expandedNodes);
         await window.electronAPI.saveState(request, currentRequestId, expandedNodesArray);
       } catch (error) {
         console.error('Failed to save state:', error);
       }
-    }, 500);
+    }, CONFIG.DEBOUNCE_DELAY_MS);
 
     return () => {
+      isMounted = false;
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -239,6 +227,15 @@ function App() {
 
   const handleSend = useCallback(async () => {
     if (!request.url) return;
+
+    // Cancel previous request if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsLoading(true);
     setResponse(null);
@@ -268,7 +265,18 @@ function App() {
       );
       setResolvedRequest(resolved);
       
+      // Check if request was cancelled before sending
+      if (controller.signal.aborted) {
+        return;
+      }
+      
       const result = await window.electronAPI.sendRequest(resolved);
+      
+      // Check again after request completes
+      if (controller.signal.aborted) {
+        return;
+      }
+      
       setResponse(result);
       
       // Add to recent requests history (store original request, not resolved)
@@ -279,11 +287,16 @@ function App() {
         timestamp: new Date().toISOString(),
       };
       setRecentRequests(prev => {
-        // Keep only last 20 requests, most recent first
-        const updated = [recentEntry, ...prev].slice(0, 20);
+        // Keep only last N requests, most recent first
+        const updated = [recentEntry, ...prev].slice(0, CONFIG.MAX_RECENT_REQUESTS);
         return updated;
       });
     } catch (error) {
+      // Don't set error response if request was cancelled
+      if (controller.signal.aborted) {
+        return;
+      }
+      
       const errorResponse = {
         status: 0,
         statusText: 'Error',
@@ -302,9 +315,13 @@ function App() {
         response: errorResponse,
         timestamp: new Date().toISOString(),
       };
-      setRecentRequests(prev => [recentEntry, ...prev].slice(0, 20));
+      setRecentRequests(prev => [recentEntry, ...prev].slice(0, CONFIG.MAX_RECENT_REQUESTS));
     } finally {
-      setIsLoading(false);
+      // Only clear loading if this is still the active request
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   }, [request, activeEnvironmentWithVariables, currentRequestId, collectionsTree]);
 
@@ -321,7 +338,6 @@ function App() {
       // Update original request to match saved version
       const requestCopy = JSON.parse(JSON.stringify(request));
       setOriginalRequest(requestCopy);
-      setHasUnsavedChanges(false);
       // Refresh the tree
       const collections = await window.electronAPI.getCollectionsTree();
       setCollectionsTree(collections);
@@ -339,7 +355,6 @@ function App() {
       setRequest(requestCopy);
       setOriginalRequest(requestCopy);
       setCurrentRequestId(node.id);
-      setHasUnsavedChanges(false);
       setResponse(null);
       // Close collection settings when selecting a request
       setIsCollectionSettingsActive(false);
@@ -489,23 +504,13 @@ function App() {
     setRequest(createEmptyRequest());
     setOriginalRequest(null);
     setCurrentRequestId(null);
-    setHasUnsavedChanges(false);
     setResponse(null);
     // Close collection settings when creating new request
     setIsCollectionSettingsActive(false);
     setSelectedCollectionForSettings(null);
   }, []);
 
-  const findNodeById = useCallback((nodes: CollectionNode[], id: string): CollectionNode | null => {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNodeById(node.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  }, []);
+  // findNodeById is now imported from utils
 
   // Quick save handler - saves existing request or triggers save form for new requests
   const handleQuickSave = useCallback(async () => {
@@ -527,7 +532,6 @@ function App() {
           // Update original request to match saved version
           const requestCopy = JSON.parse(JSON.stringify(request));
           setOriginalRequest(requestCopy);
-          setHasUnsavedChanges(false);
           // Refresh the tree
           const collections = await window.electronAPI.getCollectionsTree();
           setCollectionsTree(collections);
@@ -542,7 +546,7 @@ function App() {
       // New request - trigger save form
       setTriggerSaveForm(true);
     }
-  }, [hasUnsavedChanges, currentRequestId, request, collectionsTree, findNodeById, showToast]);
+  }, [hasUnsavedChanges, currentRequestId, request, collectionsTree, showToast]);
 
   // Get selected environment for editing
   const selectedEnvironment = selectedEnvironmentId
@@ -594,7 +598,6 @@ function App() {
     setRequest(recentRequest.request);
     setOriginalRequest(null);
     setCurrentRequestId(null);
-    setHasUnsavedChanges(false);
     setResponse(recentRequest.response || null);
   }, []);
 

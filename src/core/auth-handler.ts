@@ -12,11 +12,16 @@ export function generateAuthHeaders(auth: AuthConfig): Record<string, string> {
     case 'basic':
       if (auth.basic?.username || auth.basic?.password) {
         const credentials = `${auth.basic.username || ''}:${auth.basic.password || ''}`;
-        // Use btoa for browser compatibility (Buffer is not available in browser/renderer)
-        // btoa works with ASCII strings, which is sufficient for basic auth
-        // Note: If credentials contain {{variables}}, they will be encoded as-is here
-        // Variables are resolved later when the request is actually sent
-        const encoded = btoa(credentials);
+        // Use proper encoding for non-ASCII characters
+        // In Node.js/main process, use Buffer. In browser/renderer, use btoa with proper encoding
+        let encoded: string;
+        if (typeof Buffer !== 'undefined') {
+          // Node.js environment
+          encoded = Buffer.from(credentials, 'utf-8').toString('base64');
+        } else {
+          // Browser environment - properly encode non-ASCII characters
+          encoded = btoa(unescape(encodeURIComponent(credentials)));
+        }
         headers['Authorization'] = `Basic ${encoded}`;
       }
       break;

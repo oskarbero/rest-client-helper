@@ -24,3 +24,5 @@ export {
   renameCollectionNode,
   moveCollectionNode
 } from './storage';
+export { findNodeById, isValidUrl, deepEqual } from './utils';
+export { CONFIG } from './constants';

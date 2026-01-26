@@ -1,11 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable, CollectionSettings } from './types';
+import { CONFIG } from './constants';
+import { findNodeById } from './utils';
 
 // Collections are stored in a single JSON file
-const COLLECTIONS_FILE = 'collections.json';
+const COLLECTIONS_FILE = CONFIG.FILES.COLLECTIONS;
 // Environments are stored in a single JSON file
-const ENVIRONMENTS_FILE = 'environments.json';
+const ENVIRONMENTS_FILE = CONFIG.FILES.ENVIRONMENTS;
 
 /**
  * Gets the path to the collections config file
@@ -27,16 +29,19 @@ function generateId(): string {
 export async function loadCollectionsConfig(basePath: string): Promise<CollectionsConfig> {
   const filePath = getCollectionsFilePath(basePath);
 
-  if (!fs.existsSync(filePath)) {
-    // Return empty config if file doesn't exist
-    return {
-      version: '1.0.0',
-      collections: [],
-    };
-  }
-
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
+    // Check if file exists using async method
+    try {
+      await fs.promises.access(filePath);
+    } catch {
+      // File doesn't exist, return empty config
+      return {
+        version: '1.0.0',
+        collections: [],
+      };
+    }
+
+    const content = await fs.promises.readFile(filePath, 'utf-8');
     const config = JSON.parse(content) as CollectionsConfig;
     
     // Validate structure
@@ -68,30 +73,16 @@ export async function saveCollectionsConfig(
   const filePath = getCollectionsFilePath(basePath);
   
   // Ensure directory exists
-  if (!fs.existsSync(basePath)) {
-    fs.mkdirSync(basePath, { recursive: true });
+  try {
+    await fs.promises.access(basePath);
+  } catch {
+    await fs.promises.mkdir(basePath, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf-8');
+  await fs.promises.writeFile(filePath, JSON.stringify(config, null, 2), 'utf-8');
 }
 
-/**
- * Recursively finds a node by ID in the tree
- */
-function findNodeById(nodes: CollectionNode[], id: string): CollectionNode | null {
-  for (const node of nodes) {
-    if (node.id === id) {
-      return node;
-    }
-    if (node.children) {
-      const found = findNodeById(node.children, id);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  return null;
-}
+// findNodeById is now imported from utils
 
 /**
  * Recursively finds a node's parent and the node itself
@@ -526,16 +517,19 @@ function getEnvironmentsFilePath(basePath: string): string {
 export async function loadEnvironmentsConfig(basePath: string): Promise<EnvironmentsConfig> {
   const filePath = getEnvironmentsFilePath(basePath);
 
-  if (!fs.existsSync(filePath)) {
-    // Return empty config if file doesn't exist
-    return {
-      version: '1.0.0',
-      environments: [],
-    };
-  }
-
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
+    // Check if file exists using async method
+    try {
+      await fs.promises.access(filePath);
+    } catch {
+      // File doesn't exist, return empty config
+      return {
+        version: '1.0.0',
+        environments: [],
+      };
+    }
+
+    const content = await fs.promises.readFile(filePath, 'utf-8');
     const config = JSON.parse(content) as EnvironmentsConfig;
     
     // Validate structure
@@ -568,11 +562,13 @@ export async function saveEnvironmentsConfig(
   const filePath = getEnvironmentsFilePath(basePath);
   
   // Ensure directory exists
-  if (!fs.existsSync(basePath)) {
-    fs.mkdirSync(basePath, { recursive: true });
+  try {
+    await fs.promises.access(basePath);
+  } catch {
+    await fs.promises.mkdir(basePath, { recursive: true });
   }
 
-  fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf-8');
+  await fs.promises.writeFile(filePath, JSON.stringify(config, null, 2), 'utf-8');
 }
 
 /**
