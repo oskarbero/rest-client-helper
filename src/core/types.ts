@@ -101,6 +101,28 @@ export interface RecentRequest {
   timestamp: string;
 }
 
+// Environment variable (key-value pair)
+export interface EnvironmentVariable {
+  key: string;
+  value: string;
+}
+
+// Environment configuration
+export interface Environment {
+  id: string;
+  name: string;
+  variables: EnvironmentVariable[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Root environments structure
+export interface EnvironmentsConfig {
+  version: string; // For future migrations
+  environments: Environment[];
+  activeEnvironmentId?: string;
+}
+
 // Default/empty request for initialization
 export function createEmptyRequest(): HttpRequest {
   return {

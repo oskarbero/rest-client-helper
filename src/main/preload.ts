@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { HttpRequest, HttpResponse, CollectionNode } from '../core/types';
+import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../core/types';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
@@ -15,6 +15,13 @@ export interface ElectronAPI {
   deleteCollectionNode: (id: string) => Promise<boolean>;
   renameCollectionNode: (id: string, newName: string) => Promise<CollectionNode | null>;
   moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
+  // Environments
+  getEnvironments: () => Promise<Environment[]>;
+  createEnvironment: (name: string) => Promise<Environment>;
+  updateEnvironment: (id: string, name: string, variables: EnvironmentVariable[]) => Promise<Environment>;
+  deleteEnvironment: (id: string) => Promise<boolean>;
+  setActiveEnvironment: (id: string | null) => Promise<void>;
+  getActiveEnvironment: () => Promise<Environment | null>;
 }
 
 // Expose protected methods to the renderer process
@@ -32,4 +39,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('collection:rename', id, newName),
   moveCollectionNode: (id: string, newParentId?: string) => 
     ipcRenderer.invoke('collection:move', id, newParentId),
+  // Environments
+  getEnvironments: () => ipcRenderer.invoke('environment:getAll'),
+  createEnvironment: (name: string) => ipcRenderer.invoke('environment:create', name),
+  updateEnvironment: (id: string, name: string, variables: EnvironmentVariable[]) => 
+    ipcRenderer.invoke('environment:update', id, name, variables),
+  deleteEnvironment: (id: string) => ipcRenderer.invoke('environment:delete', id),
+  setActiveEnvironment: (id: string | null) => ipcRenderer.invoke('environment:setActive', id),
+  getActiveEnvironment: () => ipcRenderer.invoke('environment:getActive'),
 } as ElectronAPI);

@@ -4,7 +4,8 @@ import { UrlBar } from './components/RequestPanel/UrlBar';
 import { RequestTabs } from './components/RequestPanel/RequestTabs';
 import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
-import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, createEmptyRequest } from '../core/types';
+import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, createEmptyRequest } from '../core/types';
+import { resolveRequestVariables } from '../core/variable-replacer';
 
 // Toast notification type
 interface Toast {
@@ -32,6 +33,10 @@ function App() {
 
   // Recent requests history
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
+
+  // Environment state
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [activeEnvironment, setActiveEnvironment] = useState<Environment | null>(null);
 
   // Toast notifications
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -63,6 +68,14 @@ function App() {
         // Load saved collections tree
         const collections = await window.electronAPI.getCollectionsTree();
         setCollectionsTree(collections);
+
+        // Load environments
+        const envs = await window.electronAPI.getEnvironments();
+        setEnvironments(envs);
+
+        // Load active environment
+        const activeEnv = await window.electronAPI.getActiveEnvironment();
+        setActiveEnvironment(activeEnv);
       } catch (error) {
         console.error('Failed to load initial data:', error);
       } finally {
@@ -133,10 +146,13 @@ function App() {
     setResponse(null);
 
     try {
-      const result = await window.electronAPI.sendRequest(request);
+      // Resolve variables before sending
+      const resolvedRequest = resolveRequestVariables(request, activeEnvironment);
+      
+      const result = await window.electronAPI.sendRequest(resolvedRequest);
       setResponse(result);
       
-      // Add to recent requests history
+      // Add to recent requests history (store original request, not resolved)
       const recentEntry: RecentRequest = {
         id: `recent-${Date.now()}`,
         request: { ...request },
@@ -382,6 +398,71 @@ function App() {
     setRecentRequests([]);
   }, []);
 
+  // Environment handlers
+  const handleCreateEnvironment = useCallback(async (name: string) => {
+    try {
+      const newEnv = await window.electronAPI.createEnvironment(name);
+      const updatedEnvs = await window.electronAPI.getEnvironments();
+      setEnvironments(updatedEnvs);
+      showToast(`Environment "${name}" created`, 'success');
+    } catch (error) {
+      console.error('Failed to create environment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create environment';
+      showToast(errorMessage, 'error');
+      throw error;
+    }
+  }, [showToast]);
+
+  const handleUpdateEnvironment = useCallback(async (id: string, name: string, variables: EnvironmentVariable[]) => {
+    try {
+      await window.electronAPI.updateEnvironment(id, name, variables);
+      const updatedEnvs = await window.electronAPI.getEnvironments();
+      setEnvironments(updatedEnvs);
+      
+      // Update active environment if it was the one being edited
+      if (activeEnvironment?.id === id) {
+        const updatedActive = await window.electronAPI.getActiveEnvironment();
+        setActiveEnvironment(updatedActive);
+      }
+    } catch (error) {
+      console.error('Failed to update environment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update environment';
+      showToast(errorMessage, 'error');
+      throw error;
+    }
+  }, [activeEnvironment, showToast]);
+
+  const handleDeleteEnvironment = useCallback(async (id: string) => {
+    try {
+      await window.electronAPI.deleteEnvironment(id);
+      const updatedEnvs = await window.electronAPI.getEnvironments();
+      setEnvironments(updatedEnvs);
+      
+      // Clear active environment if it was deleted
+      if (activeEnvironment?.id === id) {
+        setActiveEnvironment(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete environment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete environment';
+      showToast(errorMessage, 'error');
+      throw error;
+    }
+  }, [activeEnvironment, showToast]);
+
+  const handleSetActiveEnvironment = useCallback(async (id: string | null) => {
+    try {
+      await window.electronAPI.setActiveEnvironment(id);
+      const activeEnv = await window.electronAPI.getActiveEnvironment();
+      setActiveEnvironment(activeEnv);
+      showToast(id ? 'Environment activated' : 'Environment deactivated', 'info');
+    } catch (error) {
+      console.error('Failed to set active environment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to set active environment';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -432,6 +513,13 @@ function App() {
                 triggerSaveForm={triggerSaveForm}
                 onSaveFormTriggered={() => setTriggerSaveForm(false)}
                 hasUnsavedChanges={hasUnsavedChanges}
+                environments={environments}
+                activeEnvironmentId={activeEnvironment?.id || null}
+                onCreateEnvironment={handleCreateEnvironment}
+                onUpdateEnvironment={handleUpdateEnvironment}
+                onDeleteEnvironment={handleDeleteEnvironment}
+                onSetActiveEnvironment={handleSetActiveEnvironment}
+                showToast={showToast}
               />
             </aside>
           </Panel>

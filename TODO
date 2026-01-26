@@ -1,20 +1,22 @@
 0. SECURITY REVIEW OF AUTH TAB - make sure nothing is getting stored in electron/leaked any other way
 ----- most important part -------
 
-3. Add a tab to response pane for response headers
-4. import swagger or json api 
+4. import swagger/open api 
 5. Stored environments & env variables 
 7. [TEST] form data usage against some form API (maybe the )
-9. [Collections] Add nested folder/directory organization for collections
-10. [Settings] Default place to store collections 
+10. [Settings] Default place to store collections file
 11. [Settings] Export / Import settings
 12. [Settings] Per collection settings - e.g. Auth / 
+13. [Styling] Fix styling to make sure everything is aligned
+14. Save 
 
 
 
 DONE
 -----------------------------------------------------------------------
+[Done] [Collections] Add nested folder/directory organization for collections
 [Done] Save state from last running session 
+[Done] Add a tab to response pane for response headers
 [Done] URL preview with query params
 [Done] Auto Content-Type header managementE
 [Done] State persistence (auto-save/restore)

@@ -1,4 +1,4 @@
-import type { HttpRequest, HttpResponse, CollectionNode } from '../../core/types';
+import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../../core/types';
 
 export interface ElectronAPI {
   // HTTP requests
@@ -13,6 +13,13 @@ export interface ElectronAPI {
   deleteCollectionNode: (id: string) => Promise<boolean>;
   renameCollectionNode: (id: string, newName: string) => Promise<CollectionNode | null>;
   moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
+  // Environments
+  getEnvironments: () => Promise<Environment[]>;
+  createEnvironment: (name: string) => Promise<Environment>;
+  updateEnvironment: (id: string, name: string, variables: EnvironmentVariable[]) => Promise<Environment>;
+  deleteEnvironment: (id: string) => Promise<boolean>;
+  setActiveEnvironment: (id: string | null) => Promise<void>;
+  getActiveEnvironment: () => Promise<Environment | null>;
 }
 
 declare global {

@@ -7,9 +7,15 @@ import {
   saveRequestToCollection,
   deleteCollectionNode,
   renameCollectionNode,
-  moveCollectionNode
+  moveCollectionNode,
+  getEnvironments,
+  createEnvironment,
+  updateEnvironment,
+  deleteEnvironment,
+  setActiveEnvironment,
+  getActiveEnvironment
 } from '../core/storage';
-import { HttpRequest, HttpResponse, CollectionNode } from '../core/types';
+import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../core/types';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -54,5 +60,30 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('collection:move', async (_event, id: string, newParentId?: string): Promise<CollectionNode | null> => {
     return moveCollectionNode(userDataPath, id, newParentId);
+  });
+
+  // Environment handlers
+  ipcMain.handle('environment:getAll', async (): Promise<Environment[]> => {
+    return getEnvironments(userDataPath);
+  });
+
+  ipcMain.handle('environment:create', async (_event, name: string): Promise<Environment> => {
+    return createEnvironment(userDataPath, name);
+  });
+
+  ipcMain.handle('environment:update', async (_event, id: string, name: string, variables: EnvironmentVariable[]): Promise<Environment> => {
+    return updateEnvironment(userDataPath, id, name, variables);
+  });
+
+  ipcMain.handle('environment:delete', async (_event, id: string): Promise<boolean> => {
+    return deleteEnvironment(userDataPath, id);
+  });
+
+  ipcMain.handle('environment:setActive', async (_event, id: string | null): Promise<void> => {
+    return setActiveEnvironment(userDataPath, id);
+  });
+
+  ipcMain.handle('environment:getActive', async (): Promise<Environment | null> => {
+    return getActiveEnvironment(userDataPath);
   });
 }

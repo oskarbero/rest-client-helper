@@ -114,12 +114,31 @@ function buildUrl(baseUrl: string, queryParams: { key: string; value: string; en
   // Filter enabled params with non-empty keys
   const enabledParams = queryParams.filter(p => p.enabled && p.key);
   
+  // Trim the base URL first
+  const trimmedBaseUrl = baseUrl.trim();
+  
+  // If no query params, return trimmed URL
   if (enabledParams.length === 0) {
-    return baseUrl;
+    return trimmedBaseUrl;
   }
 
   // Parse existing URL to handle existing query params
-  const url = new URL(baseUrl);
+  // Use the already-trimmed URL
+  let trimmedUrl = trimmedBaseUrl;
+  
+  // If URL doesn't have a protocol, try to add https:// as default
+  // This handles cases where variable replacement results in a domain without protocol
+  if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://') && !trimmedUrl.startsWith('//')) {
+    trimmedUrl = 'https://' + trimmedUrl;
+  }
+  
+  let url: URL;
+  try {
+    url = new URL(trimmedUrl);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid URL: ${errorMsg}. URL: ${trimmedUrl}`);
+  }
   
   for (const param of enabledParams) {
     url.searchParams.append(param.key, param.value);

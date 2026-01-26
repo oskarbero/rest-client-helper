@@ -1,9 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CollectionNode, CollectionsConfig, HttpRequest } from './types';
+import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable } from './types';
 
 // Collections are stored in a single JSON file
 const COLLECTIONS_FILE = 'collections.json';
+// Environments are stored in a single JSON file
+const ENVIRONMENTS_FILE = 'environments.json';
 
 /**
  * Gets the path to the collections config file
@@ -455,4 +457,199 @@ export async function moveCollectionNode(
 
   await saveCollectionsConfig(basePath, config);
   return node;
+}
+
+// ============================================================================
+// Environment Storage Functions
+// ============================================================================
+
+/**
+ * Gets the path to the environments config file
+ */
+function getEnvironmentsFilePath(basePath: string): string {
+  return path.join(basePath, ENVIRONMENTS_FILE);
+}
+
+/**
+ * Loads the environments configuration from file
+ */
+export async function loadEnvironmentsConfig(basePath: string): Promise<EnvironmentsConfig> {
+  const filePath = getEnvironmentsFilePath(basePath);
+
+  if (!fs.existsSync(filePath)) {
+    // Return empty config if file doesn't exist
+    return {
+      version: '1.0.0',
+      environments: [],
+    };
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const config = JSON.parse(content) as EnvironmentsConfig;
+    
+    // Validate structure
+    if (!config.environments || !Array.isArray(config.environments)) {
+      return {
+        version: config.version || '1.0.0',
+        environments: [],
+        activeEnvironmentId: config.activeEnvironmentId,
+      };
+    }
+
+    return config;
+  } catch (error) {
+    console.error('Failed to load environments config:', error);
+    // Return empty config on error
+    return {
+      version: '1.0.0',
+      environments: [],
+    };
+  }
+}
+
+/**
+ * Saves the environments configuration to file
+ */
+export async function saveEnvironmentsConfig(
+  basePath: string,
+  config: EnvironmentsConfig
+): Promise<void> {
+  const filePath = getEnvironmentsFilePath(basePath);
+  
+  // Ensure directory exists
+  if (!fs.existsSync(basePath)) {
+    fs.mkdirSync(basePath, { recursive: true });
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+/**
+ * Gets all environments
+ */
+export async function getEnvironments(basePath: string): Promise<Environment[]> {
+  const config = await loadEnvironmentsConfig(basePath);
+  return config.environments;
+}
+
+/**
+ * Creates a new environment
+ */
+export async function createEnvironment(
+  basePath: string,
+  name: string
+): Promise<Environment> {
+  const config = await loadEnvironmentsConfig(basePath);
+  const now = new Date().toISOString();
+
+  // Validate name uniqueness
+  if (config.environments.some(env => env.name === name)) {
+    throw new Error(`An environment with name "${name}" already exists`);
+  }
+
+  const newEnvironment: Environment = {
+    id: generateId(),
+    name,
+    variables: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  config.environments.push(newEnvironment);
+  await saveEnvironmentsConfig(basePath, config);
+  return newEnvironment;
+}
+
+/**
+ * Updates an environment
+ */
+export async function updateEnvironment(
+  basePath: string,
+  id: string,
+  name: string,
+  variables: EnvironmentVariable[]
+): Promise<Environment> {
+  const config = await loadEnvironmentsConfig(basePath);
+  const environment = config.environments.find(env => env.id === id);
+
+  if (!environment) {
+    throw new Error(`Environment with id ${id} not found`);
+  }
+
+  // Validate name uniqueness (excluding current environment)
+  if (config.environments.some(env => env.name === name && env.id !== id)) {
+    throw new Error(`An environment with name "${name}" already exists`);
+  }
+
+  environment.name = name;
+  environment.variables = variables;
+  environment.updatedAt = new Date().toISOString();
+
+  await saveEnvironmentsConfig(basePath, config);
+  return environment;
+}
+
+/**
+ * Deletes an environment
+ */
+export async function deleteEnvironment(
+  basePath: string,
+  id: string
+): Promise<boolean> {
+  const config = await loadEnvironmentsConfig(basePath);
+  const index = config.environments.findIndex(env => env.id === id);
+
+  if (index === -1) {
+    return false;
+  }
+
+  config.environments.splice(index, 1);
+  
+  // Clear active environment if it was deleted
+  if (config.activeEnvironmentId === id) {
+    config.activeEnvironmentId = undefined;
+  }
+
+  await saveEnvironmentsConfig(basePath, config);
+  return true;
+}
+
+/**
+ * Sets the active environment
+ */
+export async function setActiveEnvironment(
+  basePath: string,
+  id: string | null
+): Promise<void> {
+  const config = await loadEnvironmentsConfig(basePath);
+
+  if (id !== null) {
+    // Validate that the environment exists
+    if (!config.environments.some(env => env.id === id)) {
+      throw new Error(`Environment with id ${id} not found`);
+    }
+  }
+
+  config.activeEnvironmentId = id || undefined;
+  await saveEnvironmentsConfig(basePath, config);
+}
+
+/**
+ * Gets the currently active environment
+ */
+export async function getActiveEnvironment(
+  basePath: string
+): Promise<Environment | null> {
+  const config = await loadEnvironmentsConfig(basePath);
+
+  if (!config.activeEnvironmentId) {
+    return null;
+  }
+
+  const environment = config.environments.find(
+    env => env.id === config.activeEnvironmentId
+  );
+
+  return environment || null;
 }

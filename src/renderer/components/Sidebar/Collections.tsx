@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay, useDraggable, useDroppable, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { CollectionNode, RecentRequest } from '../../../core/types';
+import { CollectionNode, RecentRequest, Environment, EnvironmentVariable } from '../../../core/types';
 import { ContextMenu, ContextMenuAction } from './ContextMenu';
+import { Environments } from './Environments';
 
-type SidebarTab = 'recent' | 'collections';
+type SidebarTab = 'recent' | 'environments' | 'collections';
 
 interface CollectionsProps {
   collectionsTree: CollectionNode[];
@@ -24,6 +25,14 @@ interface CollectionsProps {
   triggerSaveForm?: boolean;
   onSaveFormTriggered?: () => void;
   hasUnsavedChanges?: boolean;
+  // Environment props
+  environments?: Environment[];
+  activeEnvironmentId?: string | null;
+  onCreateEnvironment?: (name: string) => void;
+  onUpdateEnvironment?: (id: string, name: string, variables: EnvironmentVariable[]) => void;
+  onDeleteEnvironment?: (id: string) => void;
+  onSetActiveEnvironment?: (id: string | null) => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 interface CollectionNodeItemProps {
@@ -412,6 +421,13 @@ export function Collections({
   triggerSaveForm = false,
   onSaveFormTriggered,
   hasUnsavedChanges = false,
+  environments = [],
+  activeEnvironmentId = null,
+  onCreateEnvironment,
+  onUpdateEnvironment,
+  onDeleteEnvironment,
+  onSetActiveEnvironment,
+  showToast,
 }: CollectionsProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
   const [isNaming, setIsNaming] = useState(false);
@@ -899,6 +915,15 @@ export function Collections({
               <span className="sidebar-tab-badge">{countTotalItems(collectionsTree)}</span>
             )}
           </button>
+          <button
+            className={`sidebar-tab ${activeTab === 'environments' ? 'active' : ''}`}
+            onClick={() => setActiveTab('environments')}
+          >
+            Env
+            {activeEnvironmentId && (
+              <span className="sidebar-tab-badge" title="Active environment">●</span>
+            )}
+          </button>
         </div>
         <div className="collections-actions">
           <button
@@ -942,7 +967,18 @@ export function Collections({
         </div>
       </div>
 
-      {activeTab === 'recent' ? renderRecentRequests() : renderCollections()}
+      {activeTab === 'recent' ? renderRecentRequests() : 
+       activeTab === 'environments' ? (
+         <Environments
+           environments={environments}
+           activeEnvironmentId={activeEnvironmentId || null}
+           onCreate={onCreateEnvironment || (() => {})}
+           onUpdate={onUpdateEnvironment || (() => {})}
+           onDelete={onDeleteEnvironment || (() => {})}
+           onSetActive={onSetActiveEnvironment || (() => {})}
+           showToast={showToast}
+         />
+       ) : renderCollections()}
 
       <ContextMenu
         visible={contextMenu?.visible || false}
