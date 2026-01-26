@@ -620,6 +620,7 @@ function App() {
                         onQueryParamsChange={handleQueryParamsChange}
                         onSend={handleSend}
                         isLoading={isLoading}
+                        activeEnvironment={activeEnvironment}
                       />
                       <RequestTabs
                         request={request}

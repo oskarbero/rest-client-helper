@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { HttpMethod, KeyValuePair } from '../../../core/types';
+import { HttpMethod, KeyValuePair, Environment } from '../../../core/types';
+import { VariableInput } from '../common/VariableInput';
 
 interface UrlBarProps {
   url: string;
@@ -10,6 +11,7 @@ interface UrlBarProps {
   onQueryParamsChange: (params: KeyValuePair[]) => void;
   onSend: () => void;
   isLoading: boolean;
+  activeEnvironment: Environment | null;
 }
 
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
@@ -90,34 +92,21 @@ export function UrlBar({
   onMethodChange, 
   onQueryParamsChange,
   onSend, 
-  isLoading 
+  isLoading,
+  activeEnvironment
 }: UrlBarProps) {
-  // Track whether user is actively editing the input
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
-
   // Compute the full URL with query params for display
   const fullUrl = useMemo(() => {
     return buildFullUrl(url, queryParams);
   }, [url, queryParams]);
 
-  // Update edit value when not editing and full URL changes
-  useEffect(() => {
-    if (!isEditing) {
-      setEditValue(fullUrl);
-    }
-  }, [fullUrl, isEditing]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && !isLoading) {
       onSend();
     }
   };
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFullUrl = e.target.value;
-    setEditValue(newFullUrl);
-    
+  const handleUrlChange = useCallback((newFullUrl: string) => {
     // Parse the URL to extract base URL and params
     const { baseUrl, params: urlParams } = parseUrlWithParams(newFullUrl);
     
@@ -144,15 +133,6 @@ export function UrlBar({
     }
   }, [queryParams, onUrlChange, onQueryParamsChange]);
 
-  const handleFocus = useCallback(() => {
-    setIsEditing(true);
-    setEditValue(fullUrl);
-  }, [fullUrl]);
-
-  const handleBlur = useCallback(() => {
-    setIsEditing(false);
-  }, []);
-
   return (
     <div className="url-bar-container">
       <div className="url-bar">
@@ -168,16 +148,14 @@ export function UrlBar({
             </option>
           ))}
         </select>
-        <input
-          type="text"
-          className="url-input"
+        <VariableInput
+          value={fullUrl}
+          onChange={handleUrlChange}
           placeholder="Enter request URL (e.g., https://api.example.com/users?page=1)"
-          value={isEditing ? editValue : fullUrl}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
           disabled={isLoading}
+          className="url-input"
+          activeEnvironment={activeEnvironment}
+          onKeyDown={handleKeyDown}
         />
         <button
           className={`send-button ${isLoading ? 'loading' : ''}`}

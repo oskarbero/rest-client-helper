@@ -160,6 +160,15 @@ body {
 
 .url-input {
   flex: 1;
+}
+
+/* When VariableInput is used as url-input, ensure it takes full width */
+.variable-input-wrapper.url-input {
+  flex: 1;
+}
+
+/* Legacy styles for regular input (if still used elsewhere) */
+input.url-input {
   padding: 10px 14px;
   background-color: var(--bg-input);
   color: var(--text-primary);
@@ -168,12 +177,12 @@ body {
   font-size: 14px;
 }
 
-.url-input:focus {
+input.url-input:focus {
   outline: none;
   border-color: var(--accent-blue);
 }
 
-.url-input::placeholder {
+input.url-input::placeholder {
   color: var(--text-secondary);
 }
 
@@ -2407,4 +2416,89 @@ body {
   padding-top: 0;
   border-top: none;
   overflow-y: auto;
+}
+
+/* Variable Input Component */
+.variable-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.variable-input {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  min-height: 20px;
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  transition: border-color 0.2s;
+}
+
+.variable-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(86, 156, 214, 0.3);
+}
+
+.variable-input.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+}
+
+.variable-input-placeholder {
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  font-size: 14px;
+}
+
+.variable-input-highlight {
+  background-color: rgba(206, 145, 120, 0.2);
+  color: var(--accent-orange);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.variable-input-link {
+  color: var(--accent-blue);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: all 0.2s;
+}
+
+.variable-input-link:hover {
+  text-decoration-style: solid;
+}
+
+.variable-input-tooltip {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  max-width: 300px;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+.variable-input-tooltip-value {
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background-color: var(--bg-tertiary);
+  padding: 2px 4px;
+  border-radius: 3px;
 }
