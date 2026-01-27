@@ -4,19 +4,23 @@
   "description": "A Postman-like REST client desktop application",
   "main": "dist/main/index.js",
   "scripts": {
+    "postinstall": "node scripts/setup-electron.js",
+    "install:custom": "npx -y cross-env ELECTRON_SKIP_BINARY_DOWNLOAD=1 && npm install --verbose --no-audit && npm run postinstall",
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:main\"",
     "dev:renderer": "vite",
     "dev:main": "tsc -p tsconfig.main.json --watch",
     "build": "npm run build:renderer && npm run build:main",
     "build:renderer": "vite build",
     "build:main": "tsc -p tsconfig.main.json",
-    "start": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"electron .\"",
+    "start": "cross-env NODE_ENV=development electron .",
+    "start:dev": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"electron .\"",
     "start:prod": "electron .",
     "dist": "npm run build && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "clean": "rm -rf dist node_modules electron-v*.zip"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

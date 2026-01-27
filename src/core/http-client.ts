@@ -3,6 +3,88 @@ import { generateAuthHeaders, generateAuthQueryParam } from './auth-handler';
 import { CONFIG } from './constants';
 import { isValidUrl } from './utils';
 
+/* TODO: Remove relying on electron fetch, core module should be independent of UI tool*/
+
+/**
+ * Determines the proxy URL for a given target URL based on environment variables.
+ * Respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY.
+ */
+function getProxyForUrl(targetUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(targetUrl);
+  } catch {
+    return null;
+  }
+  
+  const protocol = url.protocol.replace(':', '').toLowerCase();
+  const hostname = url.hostname.toLowerCase();
+
+  // Check NO_PROXY first
+  const noProxy = process.env.NO_PROXY || process.env.no_proxy || '';
+  if (noProxy) {
+    const noProxyList = noProxy.split(',').map(h => h.trim().toLowerCase());
+    for (const pattern of noProxyList) {
+      if (!pattern) continue;
+      // Handle wildcard "*"
+      if (pattern === '*') return null;
+      // Handle suffix matching (e.g., ".example.com" or "example.com")
+      const normalizedPattern = pattern.startsWith('.') ? pattern : '.' + pattern;
+      if (hostname === pattern.replace(/^\./, '') || hostname.endsWith(normalizedPattern)) {
+        return null;
+      }
+    }
+  }
+
+  // Get appropriate proxy based on protocol
+  if (protocol === 'https') {
+    return process.env.HTTPS_PROXY || process.env.https_proxy || 
+           process.env.HTTP_PROXY || process.env.http_proxy || null;
+  }
+  return process.env.HTTP_PROXY || process.env.http_proxy || null;
+}
+
+/**
+ * Gets the appropriate fetch function.
+ * In Electron main process, uses net.fetch which respects system proxy settings.
+ * Falls back to global fetch otherwise.
+ */
+function getProxyAwareFetch(): typeof fetch {
+  try {
+    // Try to use Electron's net module which respects proxy settings
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { net } = require('electron');
+    if (net && typeof net.fetch === 'function') {
+      console.log('Using Electron net.fetch (proxy-aware)');
+      return net.fetch.bind(net);
+    }
+  } catch {
+    // Not in Electron main process
+  }
+  
+  // Log proxy configuration for debugging
+  const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
+  const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+  const noProxy = process.env.NO_PROXY || process.env.no_proxy;
+  
+  if (httpProxy || httpsProxy) {
+    console.log('Proxy environment detected:', {
+      HTTP_PROXY: httpProxy || '(not set)',
+      HTTPS_PROXY: httpsProxy || '(not set)',
+      NO_PROXY: noProxy || '(not set)',
+    });
+    console.warn(
+      'Warning: Using standard fetch which may not respect HTTP_PROXY/HTTPS_PROXY. ' +
+      'Ensure requests are made from Electron main process for full proxy support.'
+    );
+  }
+  
+  return globalThis.fetch;
+}
+
+// Cache the fetch function
+let proxyAwareFetch: typeof fetch | null = null;
+
 /**
  * Sends an HTTP request and returns the response
  */
@@ -78,13 +160,37 @@ export async function sendRequest(request: HttpRequest, signal?: AbortSignal): P
       }
     }
 
-    // Make the request
+    // Make the request using proxy-aware fetch
     let response: Response;
     try {
-      response = await fetch(url, fetchOptions);
+      // Initialize proxy-aware fetch on first use
+      if (!proxyAwareFetch) {
+        proxyAwareFetch = getProxyAwareFetch();
+      }
+      
+      // Log proxy info for debugging
+      const proxyUrl = getProxyForUrl(url);
+      if (proxyUrl) {
+        console.log(`Request to ${url} should use proxy: ${proxyUrl}`);
+      }
+      
+      response = await proxyAwareFetch(url, fetchOptions);
       clearTimeout(timeoutId);
     } catch (error) {
       clearTimeout(timeoutId);
+      // Emit detailed context to help diagnose failed fetches
+      const proxyUrl = getProxyForUrl(url);
+      console.error('Fetch failed', {
+        url,
+        method: request.method,
+        headers,
+        hasBody: Boolean(fetchOptions.body),
+        bodyPreview: typeof fetchOptions.body === 'string'
+          ? fetchOptions.body.slice(0, 500)
+          : '[non-string or empty]',
+        proxyUrl: proxyUrl || '(direct)',
+        error: error instanceof Error ? error.message : String(error),
+      });
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Request timeout or cancelled');
       }
