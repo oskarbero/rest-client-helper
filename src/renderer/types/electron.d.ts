@@ -1,12 +1,11 @@
-import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../../core/types';
-import type { LoadedAppState } from '../../core/state-persistence';
+import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../../core/types';
 
 export interface ElectronAPI {
   // HTTP requests
   sendRequest: (request: HttpRequest) => Promise<HttpResponse>;
   // Session state persistence
-  saveState: (request: HttpRequest, currentRequestId?: string | null, expandedNodes?: string[]) => Promise<void>;
-  loadState: () => Promise<LoadedAppState>;
+  saveState: (request: HttpRequest) => Promise<void>;
+  loadState: () => Promise<HttpRequest>;
   // Collections (tree-based)
   getCollectionsTree: () => Promise<CollectionNode[]>;
   createCollection: (name: string, parentId?: string) => Promise<CollectionNode>;
@@ -14,8 +13,6 @@ export interface ElectronAPI {
   deleteCollectionNode: (id: string) => Promise<boolean>;
   renameCollectionNode: (id: string, newName: string) => Promise<CollectionNode | null>;
   moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
-  getCollectionSettings: (collectionId: string) => Promise<CollectionSettings | null>;
-  updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => Promise<CollectionNode | null>;
   // Environments
   getEnvironments: () => Promise<Environment[]>;
   createEnvironment: (name: string) => Promise<Environment>;

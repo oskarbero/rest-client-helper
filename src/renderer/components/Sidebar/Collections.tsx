@@ -4,8 +4,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { CollectionNode, RecentRequest, Environment, EnvironmentVariable } from '../../../core/types';
 import { ContextMenu, ContextMenuAction } from './ContextMenu';
 import { Environments } from './Environments';
+import { PathGroupedView } from './PathGroupedView';
 
 type SidebarTab = 'recent' | 'environments' | 'collections';
+type ViewMode = 'tree' | 'path-grouped';
 
 interface CollectionsProps {
   collectionsTree: CollectionNode[];
@@ -366,7 +368,7 @@ function CollectionNodeItem({
         )}
       </div>
       {isCollection && ((isNaming && parentIdForSave === node.id) || (isNamingCollection && parentIdForCollection === node.id)) && (
-        <div className="save-request-form-wrapper" style={{ paddingLeft: `${indent + 16}px` }}>
+        <div className="save-request-form-wrapper" style={{ paddingLeft: `${indent + 16}px` }} onClick={(e) => e.stopPropagation()}>
           {renderCreateForm()}
         </div>
       )}
@@ -444,6 +446,8 @@ export function Collections({
   onExportOpenAPI3,
 }: CollectionsProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
+  const [viewMode, setViewMode] = useState<ViewMode>('tree');
+  const [expandedGroups, setExpandedGroups] = useState<Map<string, Set<string>>>(new Map());
   
   // Notify parent when tab changes
   useEffect(() => {
@@ -454,6 +458,27 @@ export function Collections({
       onEnvironmentSelect?.(activeEnvironmentId);
     }
   }, [activeTab, activeEnvironmentId, selectedEnvironmentId, onTabChange, onEnvironmentSelect]);
+  
+  const handleToggleGroup = useCallback((collectionId: string, groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Map(prev);
+      const collectionGroups = next.get(collectionId) || new Set<string>();
+      const updatedGroups = new Set(collectionGroups);
+      
+      if (updatedGroups.has(groupId)) {
+        updatedGroups.delete(groupId);
+      } else {
+        updatedGroups.add(groupId);
+      }
+      
+      next.set(collectionId, updatedGroups);
+      return next;
+    });
+  }, []);
+  
+  const getExpandedGroupsForCollection = useCallback((collectionId: string): Set<string> => {
+    return expandedGroups.get(collectionId) || new Set();
+  }, [expandedGroups]);
   
   const [isNaming, setIsNaming] = useState(false);
   const [isNamingCollection, setIsNamingCollection] = useState(false);
@@ -487,23 +512,23 @@ export function Collections({
     node: CollectionNode | null;
   } | null>(null);
 
-  const handleSaveNew = () => {
+  const handleSaveNew = useCallback(() => {
     if (newName.trim()) {
       onSave(newName.trim(), parentIdForSave);
       setNewName('');
       setIsNaming(false);
       setParentIdForSave(undefined);
     }
-  };
+  }, [newName, parentIdForSave, onSave]);
 
-  const handleCreateCollection = () => {
+  const handleCreateCollection = useCallback(() => {
     if (newName.trim()) {
       onCreateCollection(newName.trim(), parentIdForCollection);
       setNewName('');
       setIsNamingCollection(false);
       setParentIdForCollection(undefined);
     }
-  };
+  }, [newName, parentIdForCollection, onCreateCollection]);
 
   const handleStartRename = (id: string, name: string) => {
     setEditingId(id);
@@ -526,14 +551,14 @@ export function Collections({
     setParentIdForCollection(undefined);
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, action: () => void) => {
     if (e.key === 'Enter') {
       action();
     } else if (e.key === 'Escape') {
       handleCancelCreate();
       setEditingId(null);
     }
-  };
+  }, [handleCancelCreate]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -825,6 +850,9 @@ export function Collections({
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
         onKeyDown={(e) => handleKeyDown(e, isNamingCollection ? handleCreateCollection : handleSaveNew)}
+        onClick={(e) => e.stopPropagation()}
+        onFocus={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         autoFocus
       />
       <div className="save-request-buttons">
@@ -840,88 +868,191 @@ export function Collections({
 
   const isRootLevelCreate = (isNaming || isNamingCollection) && parentIdForSave === undefined && parentIdForCollection === undefined;
 
-  const renderCollections = () => (
-    <>
-      {isRootLevelCreate && renderCreateForm()}
-
-      <DndContext
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div className="collections-list">
-          {collectionsTree.length === 0 ? (
-            <div className="collections-empty">
-              <p>No collections</p>
-              <p className="collections-empty-hint">
-                Create a collection or save your current request
-              </p>
-            </div>
-          ) : (
-            collectionsTree.map((node) => (
-              <CollectionNodeItem
-                key={node.id}
-                node={node}
-                level={0}
-                currentRequestId={currentRequestId}
-                expandedNodes={expandedNodes}
-                editingId={editingId}
-                editName={editName}
-                activeId={activeId}
-                dragOverId={dragOverId}
-                onSelect={onSelect}
-                onDelete={onDelete}
-                onRename={onRename}
-                onStartRename={handleStartRename}
-                onFinishRename={handleFinishRename}
-                onToggleExpand={onToggleExpand}
-                onCreateCollection={(parentId) => {
-                  setParentIdForCollection(parentId);
-                  setIsNamingCollection(true);
-                }}
-                onSaveRequest={(parentId) => {
-                  setParentIdForSave(parentId);
-                  setIsNaming(true);
-                }}
-                onContextMenu={handleContextMenu}
-                setEditName={setEditName}
-                getMethodColor={getMethodColor}
-                formatDate={formatDate}
-                getAllCollections={getAllCollections}
-                isNaming={isNaming}
-                isNamingCollection={isNamingCollection}
-                parentIdForSave={parentIdForSave}
-                parentIdForCollection={parentIdForCollection}
-                renderCreateForm={renderCreateForm}
-                hasUnsavedChanges={hasUnsavedChanges}
-              />
-            ))
-          )}
-        </div>
-        <DragOverlay>
-          {draggedNode ? (
-            <div className="collection-item dragging-overlay">
-              <div className="collection-item-header">
-                {draggedNode.type === 'request' && draggedNode.request && (
-                  <span className={`collection-method ${getMethodColor(draggedNode.request.method)}`}>
-                    {draggedNode.request.method}
-                  </span>
-                )}
-                {draggedNode.type === 'collection' && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                  </svg>
-                )}
-                <span className="collection-name">{draggedNode.name}</span>
+  const renderCollections = () => {
+    if (viewMode === 'path-grouped') {
+      return (
+        <>
+          {isRootLevelCreate && renderCreateForm()}
+          <div className="collections-list">
+            {collectionsTree.length === 0 ? (
+              <div className="collections-empty">
+                <p>No collections</p>
+                <p className="collections-empty-hint">
+                  Create a collection or save your current request
+                </p>
               </div>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-    </>
-  );
+            ) : (
+              collectionsTree.map((collection) => {
+                if (collection.type !== 'collection') {
+                  return null;
+                }
+                
+                const isExpanded = expandedNodes.has(collection.id);
+                
+                return (
+                  <div key={collection.id}>
+                    {/* Collection header */}
+                    <div
+                      className={`collection-item ${isExpanded ? 'active' : ''}`}
+                      onClick={() => onToggleExpand(collection.id)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleContextMenu(e, collection);
+                      }}
+                    >
+                      <div className="collection-item-header">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="collection-expand-indicator"
+                          style={{
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s',
+                            opacity: 0.6,
+                            pointerEvents: 'none',
+                            marginRight: '4px',
+                          }}
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          style={{ marginRight: '4px' }}
+                        >
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        </svg>
+                        <span className="collection-name" title={collection.name}>
+                          {collection.name}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Path-grouped view for collection's requests */}
+                    {isExpanded && (
+                      <div style={{ paddingLeft: '16px' }}>
+                        <PathGroupedView
+                          collection={collection}
+                          currentRequestId={currentRequestId}
+                          expandedGroups={getExpandedGroupsForCollection(collection.id)}
+                          onSelect={onSelect}
+                          onToggleExpand={(groupId) => handleToggleGroup(collection.id, groupId)}
+                          onDelete={onDelete}
+                          onRename={onRename}
+                          onStartRename={handleStartRename}
+                          onFinishRename={handleFinishRename}
+                          editingId={editingId}
+                          editName={editName}
+                          setEditName={setEditName}
+                          getMethodColor={getMethodColor}
+                          formatDate={formatDate}
+                          onContextMenu={handleContextMenu}
+                          hasUnsavedChanges={hasUnsavedChanges}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
+      );
+    }
+
+    // Tree view (default)
+    return (
+      <>
+        {isRootLevelCreate && renderCreateForm()}
+
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="collections-list">
+            {collectionsTree.length === 0 ? (
+              <div className="collections-empty">
+                <p>No collections</p>
+                <p className="collections-empty-hint">
+                  Create a collection or save your current request
+                </p>
+              </div>
+            ) : (
+              collectionsTree.map((node) => (
+                <CollectionNodeItem
+                  key={node.id}
+                  node={node}
+                  level={0}
+                  currentRequestId={currentRequestId}
+                  expandedNodes={expandedNodes}
+                  editingId={editingId}
+                  editName={editName}
+                  activeId={activeId}
+                  dragOverId={dragOverId}
+                  onSelect={onSelect}
+                  onDelete={onDelete}
+                  onRename={onRename}
+                  onStartRename={handleStartRename}
+                  onFinishRename={handleFinishRename}
+                  onToggleExpand={onToggleExpand}
+                  onCreateCollection={(parentId) => {
+                    setParentIdForCollection(parentId);
+                    setIsNamingCollection(true);
+                  }}
+                  onSaveRequest={(parentId) => {
+                    setParentIdForSave(parentId);
+                    setIsNaming(true);
+                  }}
+                  onContextMenu={handleContextMenu}
+                  setEditName={setEditName}
+                  getMethodColor={getMethodColor}
+                  formatDate={formatDate}
+                  getAllCollections={getAllCollections}
+                  isNaming={isNaming}
+                  isNamingCollection={isNamingCollection}
+                  parentIdForSave={parentIdForSave}
+                  parentIdForCollection={parentIdForCollection}
+                  renderCreateForm={renderCreateForm}
+                  hasUnsavedChanges={hasUnsavedChanges}
+                />
+              ))
+            )}
+          </div>
+          <DragOverlay>
+            {draggedNode ? (
+              <div className="collection-item dragging-overlay">
+                <div className="collection-item-header">
+                  {draggedNode.type === 'request' && draggedNode.request && (
+                    <span className={`collection-method ${getMethodColor(draggedNode.request.method)}`}>
+                      {draggedNode.request.method}
+                    </span>
+                  )}
+                  {draggedNode.type === 'collection' && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                  )}
+                  <span className="collection-name">{draggedNode.name}</span>
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </>
+    );
+  };
 
   return (
     <div className="collections-sidebar">
@@ -1012,6 +1143,33 @@ export function Collections({
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="17 8 12 3 7 8" />
                   <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </button>
+              <button
+                className={`collections-action-btn ${viewMode === 'path-grouped' ? 'active' : ''}`}
+                onClick={() => setViewMode(viewMode === 'tree' ? 'path-grouped' : 'tree')}
+                title={viewMode === 'tree' ? 'Switch to Path Grouped View' : 'Switch to Tree View'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {viewMode === 'tree' ? (
+                    // Path/folder icon for path-grouped view
+                    <>
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                      <line x1="9" y1="9" x2="15" y2="9" />
+                      <line x1="9" y1="13" x2="15" y2="13" />
+                      <line x1="9" y1="17" x2="15" y2="17" />
+                    </>
+                  ) : (
+                    // Tree/list icon for tree view
+                    <>
+                      <line x1="8" y1="6" x2="21" y2="6" />
+                      <line x1="8" y1="12" x2="21" y2="12" />
+                      <line x1="8" y1="18" x2="21" y2="18" />
+                      <line x1="3" y1="6" x2="3.01" y2="6" />
+                      <line x1="3" y1="12" x2="3.01" y2="12" />
+                      <line x1="3" y1="18" x2="3.01" y2="18" />
+                    </>
+                  )}
                 </svg>
               </button>
             </>

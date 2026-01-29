@@ -26,10 +26,10 @@ export function RequestTabs({ request, onRequestChange, collectionSettings, acti
 
   // Sync auth headers when auth config changes (e.g., when loading a saved request with auth)
   // Only add headers if they're completely missing - don't re-add if user manually removed them
-  // Also handles inherited auth from collection settings
+  // Use effective auth (collection auth when inherited) so headers match what will be sent
   useEffect(() => {
-    // Calculate effective auth: use request auth if not 'none', otherwise use collection auth if available
-    let effectiveAuth: AuthConfig = request.auth;
+    // Calculate effective auth: use collection auth if request is in inherited mode
+    let effectiveAuth = request.auth;
     if (request.auth.type === 'none' && !request.auth.disableInherit && collectionSettings?.auth && collectionSettings.auth.type !== 'none') {
       effectiveAuth = collectionSettings.auth;
     }
@@ -68,23 +68,7 @@ export function RequestTabs({ request, onRequestChange, collectionSettings, acti
       
       onRequestChange({ ...request, headers });
     }
-  }, [
-    request.auth.type, 
-    request.auth.basic?.username, 
-    request.auth.basic?.password, 
-    request.auth.bearer?.token, 
-    request.auth.apiKey?.key, 
-    request.auth.apiKey?.value, 
-    request.auth.apiKey?.addTo,
-    request.auth.disableInherit,
-    collectionSettings?.auth?.type,
-    collectionSettings?.auth?.basic?.username,
-    collectionSettings?.auth?.basic?.password,
-    collectionSettings?.auth?.bearer?.token,
-    collectionSettings?.auth?.apiKey?.key,
-    collectionSettings?.auth?.apiKey?.value,
-    collectionSettings?.auth?.apiKey?.addTo,
-  ]);
+  }, [request.auth.type, request.auth.basic?.username, request.auth.basic?.password, request.auth.bearer?.token, request.auth.apiKey?.key, request.auth.apiKey?.value, request.auth.apiKey?.addTo, request.auth.disableInherit, collectionSettings?.auth]);
 
   const handleHeadersChange = (headers: KeyValuePair[]) => {
     onRequestChange({ ...request, headers });
@@ -146,9 +130,9 @@ export function RequestTabs({ request, onRequestChange, collectionSettings, acti
     // Generate auth headers from the new auth config
     const authHeaders = generateAuthHeaders(auth);
     
-    // Get old effective auth to know what headers to remove when switching auth types
-    // Calculate old effective auth (considering inheritance)
-    let oldEffectiveAuth: AuthConfig = request.auth;
+    // Get old auth headers to know what to remove when switching auth types
+    // Use effective auth (collection auth when inherited) for old headers
+    let oldEffectiveAuth = request.auth;
     if (request.auth.type === 'none' && !request.auth.disableInherit && collectionSettings?.auth && collectionSettings.auth.type !== 'none') {
       oldEffectiveAuth = collectionSettings.auth;
     }
@@ -172,15 +156,8 @@ export function RequestTabs({ request, onRequestChange, collectionSettings, acti
       }
     }
     
-    // Calculate new effective auth to determine what headers should be present
-    let newEffectiveAuth: AuthConfig = auth;
-    if (auth.type === 'none' && !auth.disableInherit && collectionSettings?.auth && collectionSettings.auth.type !== 'none') {
-      newEffectiveAuth = collectionSettings.auth;
-    }
-    const newEffectiveAuthHeaders = generateAuthHeaders(newEffectiveAuth);
-    
-    // If the user explicitly set auth to 'none' with inheritance disabled, or if no auth headers should be present, remove all auth headers
-    if ((auth.type === 'none' && auth.disableInherit) || Object.keys(newEffectiveAuthHeaders).length === 0) {
+    // If auth is 'none' or no auth headers generated, ensure all auth headers are removed
+    if (auth.type === 'none' || Object.keys(authHeaders).length === 0) {
       // Remove Authorization header if it exists
       const authorizationIndex = headers.findIndex(
         h => h.key.toLowerCase() === 'authorization'
@@ -188,17 +165,9 @@ export function RequestTabs({ request, onRequestChange, collectionSettings, acti
       if (authorizationIndex >= 0 && !headersToRemove.includes(authorizationIndex)) {
         headersToRemove.push(authorizationIndex);
       }
-      // Also remove any API key headers that might have been from old auth
-      for (let i = headers.length - 1; i >= 0; i--) {
-        const header = headers[i];
-        // Check if this header was from old auth (compare with old effective auth headers)
-        if (oldAuthHeaderKeys.has(header.key.toLowerCase()) && !headersToRemove.includes(i)) {
-          headersToRemove.push(i);
-        }
-      }
     } else {
-      // Update or add new auth headers (use effective auth headers, not just the auth parameter)
-      for (const [key, value] of Object.entries(newEffectiveAuthHeaders)) {
+      // Update or add new auth headers
+      for (const [key, value] of Object.entries(authHeaders)) {
         const lowerKey = key.toLowerCase();
         const existingIndex = headers.findIndex(
           h => h.key.toLowerCase() === lowerKey

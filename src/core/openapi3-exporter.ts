@@ -198,7 +198,6 @@ function addRequestToSpec(
         schema: {
           type: 'string',
         },
-        example: param.value || undefined,
       });
     }
   }
@@ -213,7 +212,6 @@ function addRequestToSpec(
         schema: {
           type: 'string',
         },
-        example: header.value || undefined,
       });
     }
   }
@@ -340,12 +338,10 @@ function convertRequestBody(body: { type: string; content: string }): RequestBod
         const parsed = JSON.parse(body.content);
         requestBody.content['application/json'] = {
           schema: inferSchema(parsed),
-          example: parsed,
         };
       } catch {
         requestBody.content['application/json'] = {
           schema: { type: 'object' },
-          example: body.content,
         };
       }
       break;
@@ -359,7 +355,6 @@ function convertRequestBody(body: { type: string; content: string }): RequestBod
     case 'text':
       requestBody.content['text/plain'] = {
         schema: { type: 'string' },
-        example: body.content,
       };
       break;
 

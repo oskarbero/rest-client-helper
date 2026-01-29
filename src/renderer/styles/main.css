@@ -617,6 +617,22 @@ input.url-input::placeholder {
   min-height: 0;
 }
 
+.auth-inheritance-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
+}
+
+.auth-inherited-type-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .auth-type-selector {
   display: flex;
   gap: 4px;
@@ -798,6 +814,26 @@ input.url-input::placeholder {
   border-color: var(--accent-blue);
   background-color: var(--bg-input);
   font-style: normal;
+}
+
+/* Readonly inherited auth form */
+.auth-form-readonly {
+  opacity: 0.85;
+}
+
+.auth-input-readonly {
+  background-color: var(--bg-tertiary);
+  border-color: rgba(86, 156, 214, 0.3);
+  cursor: not-allowed;
+}
+
+.auth-readonly-text {
+  padding: 10px 12px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid rgba(86, 156, 214, 0.3);
+  border-radius: 4px;
+  font-size: 13px;
 }
 
 /* Response Panel Enhancements */

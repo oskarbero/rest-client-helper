@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { AuthConfig, AuthType, CollectionSettings, Environment } from '../../../core/types';
 import { VariableInput } from '../common/VariableInput';
 
@@ -18,52 +18,56 @@ const authTypes: { value: AuthType; label: string }[] = [
 
 export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment }: AuthTabProps) {
 
-  // Calculate effective auth config: use request auth if not 'none', otherwise use collection auth
-  // But only if disableInherit is not true
-  const effectiveAuth = useMemo(() => {
-    if (auth.type !== 'none') {
-      return auth;
-    }
-    // If disableInherit is true, don't inherit
-    if (auth.disableInherit) {
-      return auth;
-    }
-    // Otherwise, inherit from collection if available
-    if (collectionSettings?.auth && collectionSettings.auth.type !== 'none') {
-      return collectionSettings.auth;
-    }
-    return auth;
-  }, [auth, collectionSettings]);
-
   // Check if we're using inherited values
   const isInherited = useMemo(() => {
     return auth.type === 'none' && !auth.disableInherit && collectionSettings?.auth && collectionSettings.auth.type !== 'none';
   }, [auth, collectionSettings]);
 
   const handleTypeChange = (type: AuthType) => {
-    // When changing type, if we were inheriting, we need to copy the inherited values
-    if (isInherited && type !== 'none' && collectionSettings?.auth) {
-      // Copy inherited auth config but change the type
-      onChange({
-        ...collectionSettings.auth,
-        type,
-        disableInherit: undefined, // Clear disableInherit when switching away from 'none'
-      });
-    } else if (type === 'none') {
-      // When switching to 'none', preserve disableInherit if it was set, otherwise default to false (inherit)
+    // When switching to any auth type, disable inheritance if currently inheriting
+    if (type === 'none') {
+      // When switching to 'none', set disableInherit to true (explicit no auth)
       onChange({
         ...auth,
         type: 'none',
-        disableInherit: auth.disableInherit || false,
+        disableInherit: true,
       });
     } else {
-      // Preserve existing config data when switching types, but clear disableInherit
+      // When switching to a specific auth type, disable inheritance and use request's own fields
       onChange({
         ...auth,
         type,
-        disableInherit: undefined,
+        disableInherit: true, // Disable inheritance when selecting a specific auth type
       });
     }
+  };
+
+  const handleInheritanceToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      // Enable inheritance: set type to 'none' and disableInherit to false
+      onChange({
+        ...auth,
+        type: 'none',
+        disableInherit: false,
+      });
+    } else {
+      // Disable inheritance: set disableInherit to true
+      onChange({
+        ...auth,
+        type: auth.type === 'none' ? 'none' : auth.type, // Keep current type or 'none'
+        disableInherit: true,
+      });
+    }
+  };
+
+  const getAuthTypeLabel = (type: AuthType): string => {
+    const typeMap: Record<AuthType, string> = {
+      'none': 'No Auth',
+      'basic': 'Basic Auth',
+      'bearer': 'Bearer Token',
+      'api-key': 'API Key',
+    };
+    return typeMap[type] || 'Unknown';
   };
 
   const handleBasicChange = (field: 'username' | 'password', value: string) => {
@@ -97,62 +101,36 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
   };
 
   const renderAuthForm = () => {
-    const displayAuth = effectiveAuth;
-    const authType = displayAuth.type;
+    // If inherited, don't show any form
+    if (isInherited) {
+      return null;
+    }
+
+    // Request-specific auth forms (not inherited)
+    const authType = auth.type;
 
     switch (authType) {
       case 'basic':
         return (
           <div className="auth-form">
-            {isInherited && (
-              <div className="auth-inherited-notice">
-                <span className="auth-inherited-badge">Inherited from collection</span>
-              </div>
-            )}
             <div className="auth-field">
               <label className="auth-label">Username</label>
               <VariableInput
-                value={displayAuth.basic?.username || ''}
-                onChange={(value) => {
-                  // When user edits, copy inherited values and override
-                  if (isInherited) {
-                    onChange({
-                      ...collectionSettings!.auth!,
-                      basic: {
-                        ...collectionSettings!.auth!.basic!,
-                        username: value,
-                      },
-                    });
-                  } else {
-                    handleBasicChange('username', value);
-                  }
-                }}
+                value={auth.basic?.username || ''}
+                onChange={(value) => handleBasicChange('username', value)}
                 placeholder="Enter username or {{username}}"
                 activeEnvironment={activeEnvironment ?? null}
-                className={`auth-input ${isInherited ? 'auth-input-inherited' : ''}`}
+                className="auth-input"
               />
             </div>
             <div className="auth-field">
               <label className="auth-label">Password</label>
               <VariableInput
-                value={displayAuth.basic?.password || ''}
-                onChange={(value) => {
-                  // When user edits, copy inherited values and override
-                  if (isInherited) {
-                    onChange({
-                      ...collectionSettings!.auth!,
-                      basic: {
-                        ...collectionSettings!.auth!.basic!,
-                        password: value,
-                      },
-                    });
-                  } else {
-                    handleBasicChange('password', value);
-                  }
-                }}
+                value={auth.basic?.password || ''}
+                onChange={(value) => handleBasicChange('password', value)}
                 placeholder="Enter password or {{password}}"
                 activeEnvironment={activeEnvironment ?? null}
-                className={`auth-input ${isInherited ? 'auth-input-inherited' : ''}`}
+                className="auth-input"
               />
             </div>
             <div className="auth-info">
@@ -165,31 +143,14 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
       case 'bearer':
         return (
           <div className="auth-form">
-            {isInherited && (
-              <div className="auth-inherited-notice">
-                <span className="auth-inherited-badge">Inherited from collection</span>
-              </div>
-            )}
             <div className="auth-field">
               <label className="auth-label">Token</label>
               <VariableInput
-                value={displayAuth.bearer?.token || ''}
-                onChange={(value) => {
-                  // When user edits, copy inherited values and override
-                  if (isInherited) {
-                    onChange({
-                      ...collectionSettings!.auth!,
-                      bearer: {
-                        token: value,
-                      },
-                    });
-                  } else {
-                    handleBearerChange(value);
-                  }
-                }}
+                value={auth.bearer?.token || ''}
+                onChange={(value) => handleBearerChange(value)}
                 placeholder="Enter token or {{token}}"
                 activeEnvironment={activeEnvironment ?? null}
-                className={`auth-input ${isInherited ? 'auth-input-inherited' : ''}`}
+                className="auth-input"
               />
             </div>
             <div className="auth-info">
@@ -202,55 +163,24 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
       case 'api-key':
         return (
           <div className="auth-form">
-            {isInherited && (
-              <div className="auth-inherited-notice">
-                <span className="auth-inherited-badge">Inherited from collection</span>
-              </div>
-            )}
             <div className="auth-field">
               <label className="auth-label">Key</label>
               <VariableInput
-                value={displayAuth.apiKey?.key || ''}
-                onChange={(value) => {
-                  // When user edits, copy inherited values and override
-                  if (isInherited) {
-                    onChange({
-                      ...collectionSettings!.auth!,
-                      apiKey: {
-                        ...collectionSettings!.auth!.apiKey!,
-                        key: value,
-                      },
-                    });
-                  } else {
-                    handleApiKeyChange('key', value);
-                  }
-                }}
+                value={auth.apiKey?.key || ''}
+                onChange={(value) => handleApiKeyChange('key', value)}
                 placeholder="e.g., X-API-Key, api_key or {{apiKeyName}}"
                 activeEnvironment={activeEnvironment ?? null}
-                className={`auth-input ${isInherited ? 'auth-input-inherited' : ''}`}
+                className="auth-input"
               />
             </div>
             <div className="auth-field">
               <label className="auth-label">Value</label>
               <VariableInput
-                value={displayAuth.apiKey?.value || ''}
-                onChange={(value) => {
-                  // When user edits, copy inherited values and override
-                  if (isInherited) {
-                    onChange({
-                      ...collectionSettings!.auth!,
-                      apiKey: {
-                        ...collectionSettings!.auth!.apiKey!,
-                        value: value,
-                      },
-                    });
-                  } else {
-                    handleApiKeyChange('value', value);
-                  }
-                }}
+                value={auth.apiKey?.value || ''}
+                onChange={(value) => handleApiKeyChange('value', value)}
                 placeholder="Enter API key value or {{apiKey}}"
                 activeEnvironment={activeEnvironment ?? null}
-                className={`auth-input ${isInherited ? 'auth-input-inherited' : ''}`}
+                className="auth-input"
               />
             </div>
             <div className="auth-field">
@@ -261,20 +191,8 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
                     type="radio"
                     name="apiKeyAddTo"
                     value="header"
-                    checked={displayAuth.apiKey?.addTo !== 'query'}
-                    onChange={() => {
-                      if (isInherited) {
-                        onChange({
-                          ...collectionSettings!.auth!,
-                          apiKey: {
-                            ...collectionSettings!.auth!.apiKey!,
-                            addTo: 'header',
-                          },
-                        });
-                      } else {
-                        handleApiKeyChange('addTo', 'header');
-                      }
-                    }}
+                    checked={auth.apiKey?.addTo !== 'query'}
+                    onChange={() => handleApiKeyChange('addTo', 'header')}
                   />
                   Header
                 </label>
@@ -283,20 +201,8 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
                     type="radio"
                     name="apiKeyAddTo"
                     value="query"
-                    checked={displayAuth.apiKey?.addTo === 'query'}
-                    onChange={() => {
-                      if (isInherited) {
-                        onChange({
-                          ...collectionSettings!.auth!,
-                          apiKey: {
-                            ...collectionSettings!.auth!.apiKey!,
-                            addTo: 'query',
-                          },
-                        });
-                      } else {
-                        handleApiKeyChange('addTo', 'query');
-                      }
-                    }}
+                    checked={auth.apiKey?.addTo === 'query'}
+                    onChange={() => handleApiKeyChange('addTo', 'query')}
                   />
                   Query Params
                 </label>
@@ -304,7 +210,7 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
             </div>
             <div className="auth-info">
               The API key will be added as a{' '}
-              {displayAuth.apiKey?.addTo === 'query' ? 'query parameter' : 'custom header'}. You can use variables like <code>{'{{apiKey}}'}</code> for the key name or value.
+              {auth.apiKey?.addTo === 'query' ? 'query parameter' : 'custom header'}. You can use variables like <code>{'{{apiKey}}'}</code> for the key name or value.
             </div>
           </div>
         );
@@ -313,61 +219,59 @@ export function AuthTab({ auth, onChange, collectionSettings, activeEnvironment 
       default:
         return (
           <div className="auth-form">
-            {isInherited && collectionSettings?.auth && (
-              <div className="auth-inherited-notice">
-                <span className="auth-inherited-badge">Inherited from collection</span>
-              </div>
-            )}
-            <div className="auth-field">
-              <label className="auth-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={auth.disableInherit || false}
-                  onChange={(e) => {
-                    onChange({
-                      ...auth,
-                      type: 'none',
-                      disableInherit: e.target.checked,
-                    });
-                  }}
-                />
-                <span>Disable inherit</span>
-              </label>
-            </div>
             <div className="auth-info">
-              {auth.disableInherit ? (
-                <>
-                  This request does not use any authorization and will not inherit from collection settings.
-                </>
-              ) : collectionSettings?.auth && collectionSettings.auth.type !== 'none' ? (
-                <>
-                  This request will inherit authentication from the collection settings.
-                </>
-              ) : (
-                <>
-                  This request does not use any authorization.
-                </>
-              )}
+              This request does not use any authorization.
             </div>
           </div>
         );
     }
   };
 
+  // Determine which button should be active
+  const getActiveButton = () => {
+    // When inherited, show the inherited auth type's button as active for visual reference
+    if (isInherited && collectionSettings?.auth) {
+      return collectionSettings.auth.type;
+    }
+    if (auth.type === 'none' && auth.disableInherit) {
+      return 'none';
+    }
+    return auth.type;
+  };
+
+  const activeButton = getActiveButton();
+
   return (
     <div className="auth-tab">
+      {collectionSettings?.auth && collectionSettings.auth.type !== 'none' && (
+        <div className="auth-inheritance-indicator">
+          <label className="auth-checkbox-label">
+            <input
+              type="checkbox"
+              checked={!auth.disableInherit}
+              onChange={handleInheritanceToggle}
+            />
+            <span>Inherited from collection</span>
+          </label>
+          {!auth.disableInherit && (
+            <span className="auth-inherited-type-text">
+              ({getAuthTypeLabel(collectionSettings.auth.type)})
+            </span>
+          )}
+        </div>
+      )}
       <div className="auth-type-selector">
         {authTypes.map((type) => (
           <button
             key={type.value}
-            className={`auth-type-button ${effectiveAuth.type === type.value ? 'active' : ''}`}
+            className={`auth-type-button ${activeButton === type.value ? 'active' : ''}`}
             onClick={() => handleTypeChange(type.value)}
           >
             {type.label}
           </button>
         ))}
       </div>
-      {renderAuthForm()}
+      {!isInherited && renderAuthForm()}
     </div>
   );
 }
