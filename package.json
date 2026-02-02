@@ -5,7 +5,7 @@
   "main": "dist/main/index.js",
   "scripts": {
     "postinstall": "node scripts/setup-electron.js",
-    "install:custom": "npx -y cross-env ELECTRON_SKIP_BINARY_DOWNLOAD=1  npm install --verbose --no-audit && npm run postinstall",
+    "install:custom": "npx -y cross-env ELECTRON_SKIP_BINARY_DOWNLOAD=1 && npm install --verbose --no-audit && npm run postinstall",
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:main\"",
     "dev:renderer": "vite",
     "dev:main": "tsc -p tsconfig.main.json --watch",
@@ -30,6 +30,8 @@
     "react-resizable-panels": "^2.1.7"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
     "@types/js-yaml": "^4.0.9",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

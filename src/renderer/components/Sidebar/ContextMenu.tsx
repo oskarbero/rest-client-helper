@@ -117,6 +117,7 @@ export function ContextMenu({
     <div
       ref={menuRef}
       className="context-menu"
+      role="menu"
       style={menuStyle}
       onClick={(e) => e.stopPropagation()}
     >
@@ -124,6 +125,7 @@ export function ContextMenu({
         <>
           <div
             className="context-menu-item"
+            role="menuitem"
             onClick={(e) => handleItemClick('add-request', e)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -135,6 +137,7 @@ export function ContextMenu({
           </div>
           <div
             className="context-menu-item"
+            role="menuitem"
             onClick={(e) => handleItemClick('add-collection', e)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -147,6 +150,7 @@ export function ContextMenu({
           <div className="context-menu-separator" />
           <div
             className="context-menu-item"
+            role="menuitem"
             onClick={(e) => handleItemClick('settings', e)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -163,16 +167,17 @@ export function ContextMenu({
         <>
           {moveToCollections.length > 0 && (
             <>
-              <div className="context-menu-item context-menu-submenu">
+              <div className="context-menu-item context-menu-submenu" role="menuitem" aria-haspopup="true">
                 <span>Move to...</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
-                <div className="context-menu-submenu-items">
+                <div className="context-menu-submenu-items" role="menu">
                   {moveToCollections.map((collection) => (
                     <div
                       key={collection.id}
                       className="context-menu-item"
+                      role="menuitem"
                       onClick={(e) => handleMoveToClick(collection.id, e)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -191,6 +196,7 @@ export function ContextMenu({
 
       <div
         className="context-menu-item"
+        role="menuitem"
         onClick={(e) => handleItemClick('rename', e)}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -202,6 +208,7 @@ export function ContextMenu({
 
       <div
         className="context-menu-item context-menu-item-danger"
+        role="menuitem"
         onClick={(e) => handleItemClick('delete', e)}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -216,6 +223,7 @@ export function ContextMenu({
           <div className="context-menu-separator" />
           <div
             className="context-menu-item"
+            role="menuitem"
             onClick={(e) => handleItemClick('expand-all', e)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -225,6 +233,7 @@ export function ContextMenu({
           </div>
           <div
             className="context-menu-item"
+            role="menuitem"
             onClick={(e) => handleItemClick('collapse-all', e)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

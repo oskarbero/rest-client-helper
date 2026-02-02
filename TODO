@@ -1,7 +1,10 @@
 7. [TEST] form data usage against some form API (maybe the )
 10. [Settings] Default place to store collections file
 13. [Styling] Fix styling to make sure everything is aligned
-
+14. import/export collections to git/bitbucket
+15. Unit testing through js scripting
+    -> Allow for tests to be defined and ran to check against various aspects of the response
+    
 
 
 

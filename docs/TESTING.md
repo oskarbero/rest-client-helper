@@ -2,7 +2,18 @@
 
 ## Overview
 
-The REST Client uses Vitest as its testing framework. Tests are located alongside source files with `.test.ts` suffix.
+The REST Client uses Vitest as its testing framework. Unit tests live in a dedicated **tests/** directory, separate from implementation under **src/**. Vitest is configured via **vitest.config.ts** at the project root; the `test` scripts in package.json run tests from `tests/**`. Visual regression tests live in a separate sibling project (see [Visual Regression Testing](#visual-regression-testing)).
+
+## Visual Regression Testing
+
+Visual regression tests capture screenshots of the app and compare them against baselines to catch unintended UI changes. They run in a **separate project** so test tooling and baselines stay out of the main app.
+
+- **Location**: Sibling project `rest-client-visual-tests` (same workspace root as `rest-client`).
+- **When to run**: After UI changes or vibe coding sessions to verify the interface still looks correct.
+- **How to run**: From the visual tests project:
+  - `npm run test:all` — builds rest-client, then runs visual tests (recommended).
+  - `npm test` — runs visual tests only (rest-client must already be built).
+- **Usage and workflow**: See the [rest-client-visual-tests README](../../rest-client-visual-tests/README.md) for installation, creating/updating baselines, and reviewing visual diffs.
 
 ## Running Tests
 
@@ -22,27 +33,28 @@ npm run test:ui
 
 ## Test Structure
 
-Tests are organized to mirror the source structure:
+Tests live in **tests/** at the project root, split by layer. No test files live under **src/**.
 
 ```
-src/
-├── core/
-│   ├── http-client.ts
-│   ├── http-client.test.ts
-│   ├── auth-handler.ts
-│   ├── auth-handler.test.ts
-│   └── ...
-└── __tests__/
-    └── test-utils.ts  # Shared test utilities
+tests/
+├── core/              # Unit tests for src/core
+│   └── utils.test.ts
+└── renderer/          # Unit tests for src/renderer
+    └── ErrorBoundary.test.tsx
 ```
+
+- **tests/core/** — tests for `src/core` (pure logic, no React).
+- **tests/renderer/** — tests for `src/renderer` (React components and renderer logic).
+
+Use path aliases in tests: `@core/utils`, `@renderer/components/...` (same as in source).
 
 ## Test Conventions
 
 ### Test File Naming
 
-- Test files use `.test.ts` suffix
-- Located alongside source files
-- Example: `http-client.test.ts` tests `http-client.ts`
+- Test files use `.test.ts` or `.test.tsx` suffix.
+- Located under **tests/core/** or **tests/renderer/** (not alongside source).
+- Example: `tests/core/utils.test.ts` tests `src/core/utils.ts`.
 
 ### Test Organization
 
@@ -85,7 +97,7 @@ it('should do something', () => {
 
 ### Test Data Factories
 
-Located in `src/core/__tests__/test-utils.ts`:
+When you add shared test helpers, place them under **tests/** (e.g. `tests/test-utils.ts` or `tests/core/test-utils.ts`). Typical factories:
 
 - `createTestRequest()` - Creates test HTTP request
 - `createTestAuthConfig()` - Creates test auth config
@@ -98,7 +110,7 @@ Located in `src/core/__tests__/test-utils.ts`:
 ### Example Usage
 
 ```typescript
-import { createTestRequest, createTestKeyValue } from './__tests__/test-utils';
+import { createTestRequest, createTestKeyValue } from '../test-utils'; // or path to your test-utils
 
 const request = createTestRequest({
   url: 'https://api.example.com/test',
@@ -220,50 +232,33 @@ Run coverage report and ensure:
 - All error paths are tested
 - Edge cases are covered
 
-## Example Test
+## Example Tests
+
+**Core (tests/core/utils.test.ts):**
 
 ```typescript
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { sendRequest } from './http-client';
-import { createTestRequest } from './__tests__/test-utils';
+import { describe, it, expect } from 'vitest';
+import { isValidUrl, deepEqual, findNodeById } from '@core/utils';
+import type { CollectionNode } from '@core/types';
 
-describe('http-client', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('sendRequest', () => {
-    it('should send GET request with query parameters', async () => {
-      // Arrange
-      const request = createTestRequest({
-        url: 'https://api.example.com/test',
-        method: 'GET',
-        queryParams: [
-          { key: 'page', value: '1', enabled: true }
-        ]
-      });
-      
-      const mockResponse = {
-        status: 200,
-        statusText: 'OK',
-        headers: new Headers(),
-        text: async () => '{}'
-      };
-      
-      global.fetch = vi.fn().mockResolvedValue(mockResponse);
-      
-      // Act
-      const result = await sendRequest(request);
-      
-      // Assert
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.example.com/test?page=1',
-        expect.any(Object)
-      );
-      expect(result.status).toBe(200);
+describe('utils', () => {
+  describe('isValidUrl', () => {
+    it('should return true for https URL', () => {
+      expect(isValidUrl('https://example.com')).toBe(true);
     });
   });
+  // ...
 });
+```
+
+**Renderer (tests/renderer/ErrorBoundary.test.tsx):**
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { ErrorBoundary } from '@renderer/components/ErrorBoundary';
+// ...
 ```
 
 ## Debugging Tests
