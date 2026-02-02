@@ -1,1 +1,0 @@
-cd /c/Projects/rest-client-visual-tests && npm test -- --grep "Environments"
