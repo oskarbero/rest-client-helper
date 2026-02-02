@@ -39,6 +39,7 @@ interface CollectionsProps {
   onTabChange?: (tab: 'recent' | 'environments' | 'collections') => void;
   onEnvironmentSelect?: (id: string | null) => void;
   onOpenCollectionSettings?: (collectionId: string) => void;
+  onSyncToRemote?: (collectionId: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onImportOpenAPI3?: () => void;
   onExportOpenAPI3?: (collectionIds?: string[]) => void;
@@ -441,6 +442,7 @@ export function Collections({
   onTabChange,
   onEnvironmentSelect,
   onOpenCollectionSettings,
+  onSyncToRemote,
   showToast,
   onImportOpenAPI3,
   onExportOpenAPI3,
@@ -772,6 +774,11 @@ export function Collections({
       case 'settings':
         if (node.type === 'collection') {
           onOpenCollectionSettings?.(node.id);
+        }
+        break;
+      case 'sync-to-remote':
+        if (node.type === 'collection' && node.settings?.gitRemote?.url) {
+          onSyncToRemote?.(node.id);
         }
         break;
     }

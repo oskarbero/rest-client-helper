@@ -1,11 +1,19 @@
-import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable } from '../../core/types';
+import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../../core/types';
+
+// Git sync result type
+export interface GitSyncResult {
+  success: boolean;
+  message: string;
+  commitHash?: string;
+  fileName?: string; // The filename used for the collection in the repo
+}
 
 export interface ElectronAPI {
   // HTTP requests
   sendRequest: (request: HttpRequest) => Promise<HttpResponse>;
   // Session state persistence
-  saveState: (request: HttpRequest) => Promise<void>;
-  loadState: () => Promise<HttpRequest>;
+  saveState: (request: HttpRequest, currentRequestId?: string | null, expandedNodes?: string[]) => Promise<void>;
+  loadState: () => Promise<any>;
   // Collections (tree-based)
   getCollectionsTree: () => Promise<CollectionNode[]>;
   createCollection: (name: string, parentId?: string) => Promise<CollectionNode>;
@@ -13,6 +21,10 @@ export interface ElectronAPI {
   deleteCollectionNode: (id: string) => Promise<boolean>;
   renameCollectionNode: (id: string, newName: string) => Promise<CollectionNode | null>;
   moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
+  getCollectionSettings: (collectionId: string) => Promise<CollectionSettings | null>;
+  updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => Promise<CollectionNode | null>;
+  // Collection Git sync
+  syncCollectionToRemote: (collectionId: string) => Promise<GitSyncResult>;
   // Environments
   getEnvironments: () => Promise<Environment[]>;
   createEnvironment: (name: string) => Promise<Environment>;
@@ -25,6 +37,9 @@ export interface ElectronAPI {
   unlinkEnvironmentFromEnvFile: (environmentId: string) => Promise<void>;
   readVariablesFromEnvFile: (filePath: string) => Promise<EnvironmentVariable[]>;
   getEnvironmentWithVariables: (environmentId: string) => Promise<Environment | null>;
+  // OpenAPI 3 import/export
+  importOpenAPI3: () => Promise<CollectionNode[]>;
+  exportOpenAPI3: (collectionIds?: string[]) => Promise<void>;
 }
 
 declare global {

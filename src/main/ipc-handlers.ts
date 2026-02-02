@@ -1,5 +1,6 @@
 import { ipcMain, app, dialog } from 'electron';
 import fs from 'fs';
+import path from 'path';
 import { sendRequest } from '../core/http-client';
 import { saveState, loadState, LoadedAppState } from '../core/state-persistence';
 import { 
@@ -27,6 +28,7 @@ import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVari
 import { parseOpenAPI3 } from '../core/openapi3-parser';
 import { exportToOpenAPI3 } from '../core/openapi3-exporter';
 import { findNodeById } from '../core/utils';
+import { syncCollectionToRemote, GitSyncResult } from '../core/collection-git-sync';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -337,5 +339,72 @@ export function registerIpcHandlers(): void {
 
     // Write file
     await fs.promises.writeFile(result.filePath, JSON.stringify(spec, null, 2), 'utf-8');
+  });
+
+  // Git sync handler for collections
+  ipcMain.handle('collection:syncToRemote', async (_event, collectionId: string): Promise<GitSyncResult> => {
+    // Load the collections tree
+    const config = await loadCollectionsConfig(userDataPath);
+    
+    // Find the collection node
+    const collectionNode = findNodeById(config.collections, collectionId);
+    
+    if (!collectionNode) {
+      return {
+        success: false,
+        message: `Collection with id "${collectionId}" not found`,
+      };
+    }
+    
+    if (collectionNode.type !== 'collection') {
+      return {
+        success: false,
+        message: 'Can only sync collections, not individual requests',
+      };
+    }
+    
+    // Check if git remote is configured
+    const gitRemote = collectionNode.settings?.gitRemote;
+    if (!gitRemote?.url) {
+      return {
+        success: false,
+        message: 'No Git remote URL configured for this collection. Please configure it in collection settings.',
+      };
+    }
+    
+    // Determine branch (default to 'main')
+    const branch = gitRemote.branch || 'main';
+    
+    // Check if this is the first sync (no existing syncFileName)
+    const existingFileName = gitRemote.syncFileName;
+    const isFirstSync = !existingFileName;
+    
+    // Cache directory for this collection's repo
+    const gitCacheDir = path.join(userDataPath, 'git-cache', collectionId);
+    
+    // Perform the sync
+    const result = await syncCollectionToRemote(
+      collectionNode,
+      gitRemote.url,
+      branch,
+      gitCacheDir,
+      existingFileName,
+      isFirstSync
+    );
+    
+    // If successful, update settings with lastSyncedAt and syncFileName
+    if (result.success) {
+      const updatedSettings: CollectionSettings = {
+        ...collectionNode.settings,
+        gitRemote: {
+          ...gitRemote,
+          syncFileName: result.fileName, // Store the filename for future syncs
+        },
+        lastSyncedAt: new Date().toISOString(),
+      };
+      await updateCollectionSettings(userDataPath, collectionId, updatedSettings);
+    }
+    
+    return result;
   });
 }

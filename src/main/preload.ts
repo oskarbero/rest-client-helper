@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
 import type { LoadedAppState } from '../core/state-persistence';
+import type { GitSyncResult } from '../core/collection-git-sync';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
@@ -18,6 +19,8 @@ export interface ElectronAPI {
   moveCollectionNode: (id: string, newParentId?: string) => Promise<CollectionNode | null>;
   getCollectionSettings: (collectionId: string) => Promise<CollectionSettings | null>;
   updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => Promise<CollectionNode | null>;
+  // Collection Git sync
+  syncCollectionToRemote: (collectionId: string) => Promise<GitSyncResult>;
   // Environments
   getEnvironments: () => Promise<Environment[]>;
   createEnvironment: (name: string) => Promise<Environment>;
@@ -55,6 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('collection:getSettings', collectionId),
   updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => 
     ipcRenderer.invoke('collection:updateSettings', collectionId, settings),
+  // Collection Git sync
+  syncCollectionToRemote: (collectionId: string) => 
+    ipcRenderer.invoke('collection:syncToRemote', collectionId),
   // Environments
   getEnvironments: () => ipcRenderer.invoke('environment:getAll'),
   createEnvironment: (name: string) => ipcRenderer.invoke('environment:create', name),

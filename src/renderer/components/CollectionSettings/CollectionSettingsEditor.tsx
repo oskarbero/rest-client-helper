@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { CollectionSettings, AuthConfig, AuthType, KeyValuePair, Environment } from '../../../core/types';
+import { CollectionSettings, AuthConfig, AuthType, KeyValuePair, Environment, GitRemoteConfig } from '../../../core/types';
 import { KeyValueEditor } from '../common/KeyValueEditor';
 import { VariableInput } from '../common/VariableInput';
 
@@ -8,6 +8,7 @@ interface CollectionSettingsEditorProps {
   collectionName: string;
   settings: CollectionSettings | null;
   onUpdate: (collectionId: string, settings: CollectionSettings) => void;
+  onSyncToRemote?: (collectionId: string) => void;
   activeEnvironment?: Environment | null;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -23,6 +24,7 @@ export function CollectionSettingsEditor({
   collectionName,
   settings,
   onUpdate,
+  onSyncToRemote,
   activeEnvironment = null,
   showToast,
 }: CollectionSettingsEditorProps) {
@@ -33,6 +35,14 @@ export function CollectionSettingsEditor({
   const [originalAuth, setOriginalAuth] = useState<AuthConfig>({ type: 'none' });
   const [originalHeaders, setOriginalHeaders] = useState<KeyValuePair[]>([]);
   const [showBearerToken, setShowBearerToken] = useState(false);
+  
+  // Git remote state
+  const [editGitRemoteUrl, setEditGitRemoteUrl] = useState('');
+  const [editGitBranch, setEditGitBranch] = useState('');
+  const [originalGitRemoteUrl, setOriginalGitRemoteUrl] = useState('');
+  const [originalGitBranch, setOriginalGitBranch] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | undefined>(undefined);
 
   // Initialize editor when settings change
   useEffect(() => {
@@ -43,6 +53,12 @@ export function CollectionSettingsEditor({
       setOriginalBaseUrl(settings.baseUrl || '');
       setOriginalAuth(JSON.parse(JSON.stringify(settings.auth || { type: 'none' })));
       setOriginalHeaders(JSON.parse(JSON.stringify(settings.headers || [])));
+      // Git remote settings
+      setEditGitRemoteUrl(settings.gitRemote?.url || '');
+      setEditGitBranch(settings.gitRemote?.branch || '');
+      setOriginalGitRemoteUrl(settings.gitRemote?.url || '');
+      setOriginalGitBranch(settings.gitRemote?.branch || '');
+      setLastSyncedAt(settings.lastSyncedAt);
     } else {
       setEditBaseUrl('');
       setEditAuth({ type: 'none' });
@@ -50,6 +66,12 @@ export function CollectionSettingsEditor({
       setOriginalBaseUrl('');
       setOriginalAuth({ type: 'none' });
       setOriginalHeaders([]);
+      // Git remote settings
+      setEditGitRemoteUrl('');
+      setEditGitBranch('');
+      setOriginalGitRemoteUrl('');
+      setOriginalGitBranch('');
+      setLastSyncedAt(undefined);
     }
   }, [settings]);
 
@@ -83,10 +105,20 @@ export function CollectionSettingsEditor({
   };
 
   const handleSave = useCallback(async () => {
+    // Build git remote config if URL is provided
+    const gitRemoteUrl = editGitRemoteUrl.trim();
+    const gitBranch = editGitBranch.trim();
+    const gitRemote = gitRemoteUrl ? {
+      url: gitRemoteUrl,
+      branch: gitBranch || undefined,
+    } : undefined;
+
     const settingsToSave: CollectionSettings = {
       baseUrl: editBaseUrl.trim() || undefined,
       auth: editAuth.type !== 'none' ? editAuth : undefined,
       headers: editHeaders.length > 0 ? editHeaders : undefined,
+      gitRemote,
+      lastSyncedAt, // Preserve lastSyncedAt
     };
 
     try {
@@ -95,20 +127,24 @@ export function CollectionSettingsEditor({
       setOriginalBaseUrl(editBaseUrl.trim());
       setOriginalAuth(JSON.parse(JSON.stringify(editAuth)));
       setOriginalHeaders(JSON.parse(JSON.stringify(editHeaders)));
+      setOriginalGitRemoteUrl(gitRemoteUrl);
+      setOriginalGitBranch(gitBranch);
       showToast?.('Collection settings updated', 'success');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update collection settings';
       showToast?.(errorMessage, 'error');
     }
-  }, [collectionId, editBaseUrl, editAuth, editHeaders, onUpdate, showToast]);
+  }, [collectionId, editBaseUrl, editAuth, editHeaders, editGitRemoteUrl, editGitBranch, lastSyncedAt, onUpdate, showToast]);
 
   const handleCancel = useCallback(() => {
     if (settings) {
       setEditBaseUrl(originalBaseUrl);
       setEditAuth(JSON.parse(JSON.stringify(originalAuth)));
       setEditHeaders(JSON.parse(JSON.stringify(originalHeaders)));
+      setEditGitRemoteUrl(originalGitRemoteUrl);
+      setEditGitBranch(originalGitBranch);
     }
-  }, [settings, originalBaseUrl, originalAuth, originalHeaders]);
+  }, [settings, originalBaseUrl, originalAuth, originalHeaders, originalGitRemoteUrl, originalGitBranch]);
 
   // Compute hasUnsavedChanges
   const hasUnsavedChanges = useMemo(() => {
@@ -142,8 +178,56 @@ export function CollectionSettingsEditor({
       }
     }
 
+    // Compare git remote settings
+    if (editGitRemoteUrl.trim() !== originalGitRemoteUrl.trim()) {
+      return true;
+    }
+    if (editGitBranch.trim() !== originalGitBranch.trim()) {
+      return true;
+    }
+
     return false;
-  }, [editBaseUrl, editAuth, editHeaders, originalBaseUrl, originalAuth, originalHeaders]);
+  }, [editBaseUrl, editAuth, editHeaders, originalBaseUrl, originalAuth, originalHeaders, editGitRemoteUrl, editGitBranch, originalGitRemoteUrl, originalGitBranch]);
+
+  // Handle sync to remote
+  const handleSyncToRemote = useCallback(async () => {
+    if (!onSyncToRemote || !editGitRemoteUrl.trim()) return;
+    
+    setIsSyncing(true);
+    try {
+      await onSyncToRemote(collectionId);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [collectionId, editGitRemoteUrl, onSyncToRemote]);
+
+  // Validate Git URL format
+  const isValidGitUrl = useCallback((url: string): boolean => {
+    if (!url.trim()) return true; // Empty is valid (optional)
+    const trimmed = url.trim();
+    // HTTPS format: https://...
+    // SSH format: git@...
+    // File format (for local repos): file://...
+    return trimmed.startsWith('https://') || 
+           trimmed.startsWith('http://') || 
+           trimmed.startsWith('git@') ||
+           trimmed.startsWith('file://');
+  }, []);
+
+  const gitUrlError = editGitRemoteUrl.trim() && !isValidGitUrl(editGitRemoteUrl) 
+    ? 'URL should start with https://, http://, git@, or file://'
+    : undefined;
+
+  // Format lastSyncedAt for display
+  const formatLastSynced = (isoDate: string | undefined): string => {
+    if (!isoDate) return 'Never';
+    try {
+      const date = new Date(isoDate);
+      return date.toLocaleString();
+    } catch {
+      return 'Unknown';
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -343,7 +427,7 @@ export function CollectionSettingsEditor({
         </div>
 
         {/* Headers Section */}
-        <div>
+        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
           <label style={{ 
             display: 'block', 
             fontSize: '13px', 
@@ -362,6 +446,143 @@ export function CollectionSettingsEditor({
             keyPlaceholder="Header name"
             valuePlaceholder="Header value"
           />
+        </div>
+
+        {/* Git Remote Section */}
+        <div>
+          <label style={{ 
+            display: 'block', 
+            fontSize: '13px', 
+            fontWeight: 600, 
+            color: 'var(--text-primary)', 
+            marginBottom: '8px' 
+          }}>
+            Remote Repository (Git)
+          </label>
+          <p className="tab-description" style={{ marginBottom: '12px' }}>
+            Configure a Git remote to sync this collection. Requires Git to be installed on your system.
+          </p>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              color: 'var(--text-secondary)', 
+              marginBottom: '4px' 
+            }}>
+              Remote URL
+            </label>
+            <input
+              type="text"
+              className={`env-var-input ${gitUrlError ? 'input-error' : ''}`}
+              placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git"
+              value={editGitRemoteUrl}
+              onChange={(e) => setEditGitRemoteUrl(e.target.value)}
+              style={{ width: '100%' }}
+            />
+            {gitUrlError && (
+              <p style={{ 
+                fontSize: '11px', 
+                color: 'var(--error-color, #ff6b6b)', 
+                marginTop: '4px',
+                marginBottom: 0 
+              }}>
+                {gitUrlError}
+              </p>
+            )}
+          </div>
+          
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '12px', 
+              color: 'var(--text-secondary)', 
+              marginBottom: '4px' 
+            }}>
+              Branch (optional)
+            </label>
+            <input
+              type="text"
+              className="env-var-input"
+              placeholder="main"
+              value={editGitBranch}
+              onChange={(e) => setEditGitBranch(e.target.value)}
+              style={{ width: '200px' }}
+            />
+            <p style={{ 
+              fontSize: '11px', 
+              color: 'var(--text-secondary)', 
+              marginTop: '4px',
+              marginBottom: 0 
+            }}>
+              Defaults to <code>main</code> if not specified.
+            </p>
+          </div>
+          
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '16px',
+            marginTop: '16px'
+          }}>
+            <button
+              className="save-button"
+              onClick={handleSyncToRemote}
+              disabled={!editGitRemoteUrl.trim() || !!gitUrlError || isSyncing || hasUnsavedChanges}
+              title={
+                hasUnsavedChanges 
+                  ? 'Save settings before syncing' 
+                  : !editGitRemoteUrl.trim() 
+                    ? 'Configure a remote URL first' 
+                    : 'Sync collection to remote repository'
+              }
+              style={{ minWidth: '120px' }}
+            >
+              {isSyncing ? (
+                <>
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                    style={{ animation: 'spin 1s linear infinite' }}
+                  >
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 4v6h-6" />
+                    <path d="M1 20v-6h6" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                  Sync to Remote
+                </>
+              )}
+            </button>
+            
+            <div style={{ 
+              fontSize: '12px', 
+              color: 'var(--text-secondary)' 
+            }}>
+              Last synced: {formatLastSynced(lastSyncedAt)}
+            </div>
+          </div>
+          
+          {hasUnsavedChanges && editGitRemoteUrl.trim() && (
+            <p style={{ 
+              fontSize: '11px', 
+              color: 'var(--warning-color, #ffc107)', 
+              marginTop: '8px',
+              marginBottom: 0 
+            }}>
+              Save your settings before syncing to remote.
+            </p>
+          )}
         </div>
       </div>
     </div>

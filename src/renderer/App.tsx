@@ -753,6 +753,32 @@ function App() {
     }
   }, [showToast]);
 
+  // Handle syncing collection to Git remote
+  const handleSyncToRemote = useCallback(async (collectionId: string) => {
+    try {
+      showToast('Syncing collection to remote...', 'info');
+      const result = await window.electronAPI.syncCollectionToRemote(collectionId);
+      
+      if (result.success) {
+        showToast(result.message, 'success');
+        // Refresh collections tree to get updated lastSyncedAt
+        const collections = await window.electronAPI.getCollectionsTree();
+        setCollectionsTree(collections);
+        // Update local collection settings if viewing this collection
+        if (selectedCollectionForSettings === collectionId) {
+          const updatedSettings = await window.electronAPI.getCollectionSettings(collectionId);
+          setCollectionSettings(updatedSettings);
+        }
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Failed to sync collection:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sync collection';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast, selectedCollectionForSettings]);
+
   // Get selected collection for settings
   const selectedCollection = selectedCollectionForSettings
     ? (() => {
@@ -866,6 +892,7 @@ function App() {
                 onTabChange={handleTabChange}
                 onEnvironmentSelect={handleEnvironmentSelect}
                 onOpenCollectionSettings={handleOpenCollectionSettings}
+                onSyncToRemote={handleSyncToRemote}
                 showToast={showToast}
               />
             </aside>
@@ -905,6 +932,7 @@ function App() {
                     collectionName={selectedCollection.name}
                     settings={collectionSettings}
                     onUpdate={handleUpdateCollectionSettings}
+                    onSyncToRemote={handleSyncToRemote}
                     activeEnvironment={activeEnvironmentWithVariables}
                     showToast={showToast}
                   />

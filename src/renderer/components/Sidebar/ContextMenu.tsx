@@ -5,6 +5,7 @@ export type ContextMenuAction =
   | 'add-request' 
   | 'add-collection' 
   | 'settings'
+  | 'sync-to-remote'
   | 'rename' 
   | 'delete' 
   | 'move-to'
@@ -159,6 +160,20 @@ export function ContextMenu({
             </svg>
             <span>Settings</span>
           </div>
+          {node.settings?.gitRemote?.url && (
+            <div
+              className="context-menu-item"
+              role="menuitem"
+              onClick={(e) => handleItemClick('sync-to-remote', e)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6" />
+                <path d="M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              <span>Sync to Remote</span>
+            </div>
+          )}
           <div className="context-menu-separator" />
         </>
       )}

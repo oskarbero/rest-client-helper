@@ -115,11 +115,20 @@ export interface EnvironmentsConfig {
   activeEnvironmentId?: string;
 }
 
+// Git remote configuration for collection sync
+export interface GitRemoteConfig {
+  url: string; // Git remote URL (HTTPS or SSH)
+  branch?: string; // Branch name (defaults to 'main' if not specified)
+  syncFileName?: string; // Filename used in the repo (set after first sync)
+}
+
 // Collection settings that can be inherited by child requests and collections
 export interface CollectionSettings {
   baseUrl?: string; // Base URL to prepend to request URLs
   auth?: AuthConfig; // Authentication configuration (basic or bearer token)
   headers?: KeyValuePair[]; // Common headers to apply to all requests
+  gitRemote?: GitRemoteConfig; // Git remote for syncing collection to repository
+  lastSyncedAt?: string; // ISO timestamp of last successful sync
 }
 
 // Collection node that can contain both requests and sub-collections
