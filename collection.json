@@ -1,0 +1,141 @@
+{
+  "id": "node_1769551725013_laghdeb",
+  "name": "Dummy API",
+  "type": "collection",
+  "createdAt": "2026-01-27T22:08:45.013Z",
+  "updatedAt": "2026-02-02T21:30:40.293Z",
+  "settings": {
+    "baseUrl": "{{dummy_api}}",
+    "auth": {
+      "type": "bearer",
+      "bearer": {
+        "token": "{{ACCESS_TOKEN}}"
+      }
+    }
+  },
+  "children": [
+    {
+      "id": "node_1769551729501_d3xanug",
+      "name": "auth/me 2",
+      "type": "request",
+      "createdAt": "2026-01-27T22:08:49.501Z",
+      "updatedAt": "2026-01-29T18:59:44.238Z",
+      "request": {
+        "url": "/auth/me",
+        "method": "GET",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain",
+            "enabled": false
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJlbWlseXMiLCJlbWFpbCI6ImVtaWx5LmpvaG5zb25AeC5kdW1teWpzb24uY29tIiwiZmlyc3ROYW1lIjoiRW1pbHkiLCJsYXN0TmFtZSI6IkpvaG5zb24iLCJnZW5kZXIiOiJmZW1hbGUiLCJpbWFnZSI6Imh0dHBzOi8vZHVtbXlqc29uLmNvbS9pY29uL2VtaWx5cy8xMjgiLCJpYXQiOjE3Njk3MTMxNjcsImV4cCI6MTc2OTcxNDk2N30.1ixRQsbodQBx1Hdwjz1OoadNBbTPOjBgh8BubUtteQw",
+            "enabled": true
+          }
+        ],
+        "queryParams": [],
+        "body": {
+          "type": "none",
+          "content": ""
+        },
+        "auth": {
+          "type": "bearer",
+          "disableInherit": true,
+          "bearer": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJlbWlseXMiLCJlbWFpbCI6ImVtaWx5LmpvaG5zb25AeC5kdW1teWpzb24uY29tIiwiZmlyc3ROYW1lIjoiRW1pbHkiLCJsYXN0TmFtZSI6IkpvaG5zb24iLCJnZW5kZXIiOiJmZW1hbGUiLCJpbWFnZSI6Imh0dHBzOi8vZHVtbXlqc29uLmNvbS9pY29uL2VtaWx5cy8xMjgiLCJpYXQiOjE3Njk3MTMxNjcsImV4cCI6MTc2OTcxNDk2N30.1ixRQsbodQBx1Hdwjz1OoadNBbTPOjBgh8BubUtteQw"
+          }
+        },
+        "operationId": "get_current_auth_user"
+      }
+    },
+    {
+      "id": "node_1769551770701_pesayeq",
+      "name": "login (get token) 3",
+      "type": "request",
+      "createdAt": "2026-01-27T22:09:30.701Z",
+      "updatedAt": "2026-01-29T18:59:24.979Z",
+      "request": {
+        "url": "/auth/login",
+        "method": "POST",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "enabled": true
+          }
+        ],
+        "queryParams": [],
+        "body": {
+          "type": "json",
+          "content": "{\n  \"username\": \"emilys\",\n  \"password\": \"emilyspass\",\n  \"expiresInMins\": 30\n}"
+        },
+        "auth": {
+          "type": "none",
+          "bearer": {
+            "token": ""
+          },
+          "disableInherit": true
+        },
+        "operationId": "get_current_auth_user"
+      }
+    },
+    {
+      "id": "node_1769552504433_f9gnwnv",
+      "name": "abcd",
+      "type": "request",
+      "createdAt": "2026-01-27T22:21:44.433Z",
+      "updatedAt": "2026-01-29T19:00:06.672Z",
+      "request": {
+        "url": "/auth/fake",
+        "method": "PUT",
+        "headers": [],
+        "queryParams": [],
+        "body": {
+          "type": "none",
+          "content": ""
+        },
+        "auth": {
+          "type": "none",
+          "disableInherit": true
+        }
+      }
+    },
+    {
+      "id": "node_1769552524697_h3xxdwq",
+      "name": "nested collection",
+      "type": "collection",
+      "createdAt": "2026-01-27T22:22:04.697Z",
+      "updatedAt": "2026-01-27T22:23:09.885Z",
+      "children": [
+        {
+          "id": "node_1769552531964_zxammrs",
+          "name": "test request",
+          "type": "request",
+          "createdAt": "2026-01-27T22:22:11.964Z",
+          "updatedAt": "2026-01-27T22:22:33.813Z",
+          "request": {
+            "url": "patch",
+            "method": "PATCH",
+            "headers": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}",
+                "enabled": true
+              }
+            ],
+            "queryParams": [],
+            "body": {
+              "type": "none",
+              "content": ""
+            },
+            "auth": {
+              "type": "none"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
