@@ -15,6 +15,12 @@ export interface GitSyncResult {
   fileName?: string; // The filename used for the collection in the repo
 }
 
+export interface GitPullResult {
+  success: boolean;
+  message: string;
+  collection?: CollectionNode; // The pulled collection data
+}
+
 /**
  * Sanitizes a collection name for use as a filename
  * Removes/replaces characters that are invalid in filenames
@@ -320,23 +326,26 @@ export async function pushCollectionSubtree(
  * @param remoteUrl - Git remote URL
  * @param branch - Git branch name
  * @param cacheDir - Local cache directory for the repo
- * @param existingFileName - If provided, use this filename (for subsequent syncs)
- * @param isFirstSync - If true, generate a timestamped filename
+ * @param existingFileName - If provided, use this filename (for subsequent syncs). If not provided, generates a new timestamped filename.
  */
 export async function syncCollectionToRemote(
   collectionNode: CollectionNode,
   remoteUrl: string,
   branch: string,
   cacheDir: string,
-  existingFileName?: string,
-  isFirstSync: boolean = false
+  existingFileName?: string
 ): Promise<GitSyncResult> {
   try {
     // Get or clone the repository
     const { git, path: repoPath } = await getOrCloneRepo(remoteUrl, branch, cacheDir);
 
-    // Determine the filename to use
+    // Determine the filename to use:
+    // - If existingFileName is provided, use it (subsequent sync)
+    // - Otherwise, generate a new timestamped filename (first sync)
+    const isFirstSync = !existingFileName;
     const fileName = existingFileName || generateCollectionFileName(collectionNode.name, isFirstSync);
+    
+    console.log(`[Git Sync] Collection: "${collectionNode.name}", isFirstSync: ${isFirstSync}, fileName: "${fileName}"`);
 
     // Push the collection
     const result = await pushCollectionSubtree(collectionNode, repoPath, git, fileName);
@@ -351,6 +360,98 @@ export async function syncCollectionToRemote(
     return {
       success: false,
       message: errorMessage,
+    };
+  }
+}
+
+/**
+ * Pulls a collection from the remote repository
+ * @param remoteUrl - Git remote URL
+ * @param branch - Git branch name
+ * @param cacheDir - Local cache directory for the repo
+ * @param syncFileName - The filename to read from the repo
+ * @returns The collection data from the remote
+ */
+export async function pullCollectionFromRemote(
+  remoteUrl: string,
+  branch: string,
+  cacheDir: string,
+  syncFileName: string
+): Promise<GitPullResult> {
+  try {
+    // Get or clone the repository (this will also fetch latest changes)
+    const { git, path: repoPath } = await getOrCloneRepo(remoteUrl, branch, cacheDir);
+
+    // Force pull to get the latest changes
+    try {
+      await git.fetch('origin', branch);
+      await git.reset(['--hard', `origin/${branch}`]);
+    } catch (fetchError) {
+      // If reset fails, try just pulling
+      try {
+        await git.pull('origin', branch, { '--force': null });
+      } catch {
+        // Continue anyway, we might have the file from clone
+      }
+    }
+
+    // Read the collection file
+    const filePath = path.join(repoPath, syncFileName);
+    
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      const collection = JSON.parse(content) as CollectionNode;
+      
+      // Validate basic structure
+      if (!collection.id || !collection.name || !collection.type) {
+        return {
+          success: false,
+          message: 'Invalid collection file format: missing required fields (id, name, type)',
+        };
+      }
+      
+      console.log(`[Git Pull] Successfully pulled collection "${collection.name}" from ${syncFileName}`);
+      
+      return {
+        success: true,
+        message: `Successfully pulled collection "${collection.name}" from remote`,
+        collection,
+      };
+    } catch (readError) {
+      if ((readError as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          success: false,
+          message: `Collection file "${syncFileName}" not found in the remote repository. Has it been pushed yet?`,
+        };
+      }
+      
+      const errorMessage = readError instanceof Error ? readError.message : 'Unknown error';
+      return {
+        success: false,
+        message: `Failed to read collection file: ${errorMessage}`,
+      };
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Map common Git errors to user-friendly messages
+    if (errorMessage.includes('Authentication failed') || errorMessage.includes('could not read Username')) {
+      return {
+        success: false,
+        message: 'Authentication failed. Please check your Git credentials.',
+      };
+    }
+    
+    if (errorMessage.includes('Could not resolve host') || errorMessage.includes('unable to access')) {
+      return {
+        success: false,
+        message: 'Network error: Unable to connect to the remote repository.',
+      };
+    }
+
+    return {
+      success: false,
+      message: `Failed to pull from remote: ${errorMessage}`,
     };
   }
 }

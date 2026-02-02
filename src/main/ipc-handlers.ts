@@ -28,7 +28,7 @@ import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVari
 import { parseOpenAPI3 } from '../core/openapi3-parser';
 import { exportToOpenAPI3 } from '../core/openapi3-exporter';
 import { findNodeById } from '../core/utils';
-import { syncCollectionToRemote, GitSyncResult } from '../core/collection-git-sync';
+import { syncCollectionToRemote, pullCollectionFromRemote, GitSyncResult, GitPullResult } from '../core/collection-git-sync';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -375,21 +375,21 @@ export function registerIpcHandlers(): void {
     // Determine branch (default to 'main')
     const branch = gitRemote.branch || 'main';
     
-    // Check if this is the first sync (no existing syncFileName)
+    // Get existing filename if this is a subsequent sync
     const existingFileName = gitRemote.syncFileName;
-    const isFirstSync = !existingFileName;
     
     // Cache directory for this collection's repo
     const gitCacheDir = path.join(userDataPath, 'git-cache', collectionId);
     
     // Perform the sync
+    // If existingFileName is provided, it will use that (subsequent sync)
+    // Otherwise it will generate a new timestamped filename (first sync)
     const result = await syncCollectionToRemote(
       collectionNode,
       gitRemote.url,
       branch,
       gitCacheDir,
-      existingFileName,
-      isFirstSync
+      existingFileName
     );
     
     // If successful, update settings with lastSyncedAt and syncFileName
@@ -403,6 +403,97 @@ export function registerIpcHandlers(): void {
         lastSyncedAt: new Date().toISOString(),
       };
       await updateCollectionSettings(userDataPath, collectionId, updatedSettings);
+    }
+    
+    return result;
+  });
+
+  // Git pull handler for collections - fetches from remote and overwrites local
+  ipcMain.handle('collection:pullFromRemote', async (_event, collectionId: string): Promise<GitPullResult> => {
+    // Load the collections tree
+    const config = await loadCollectionsConfig(userDataPath);
+    
+    // Find the collection node
+    const collectionNode = findNodeById(config.collections, collectionId);
+    
+    if (!collectionNode) {
+      return {
+        success: false,
+        message: `Collection with id "${collectionId}" not found`,
+      };
+    }
+    
+    if (collectionNode.type !== 'collection') {
+      return {
+        success: false,
+        message: 'Can only pull collections, not individual requests',
+      };
+    }
+    
+    // Check if git remote is configured
+    const gitRemote = collectionNode.settings?.gitRemote;
+    if (!gitRemote?.url) {
+      return {
+        success: false,
+        message: 'No Git remote URL configured for this collection.',
+      };
+    }
+    
+    // Check if we have a sync filename (must have been pushed at least once)
+    if (!gitRemote.syncFileName) {
+      return {
+        success: false,
+        message: 'This collection has not been synced to remote yet. Push first before pulling.',
+      };
+    }
+    
+    // Determine branch (default to 'main')
+    const branch = gitRemote.branch || 'main';
+    
+    // Cache directory for this collection's repo
+    const gitCacheDir = path.join(userDataPath, 'git-cache', collectionId);
+    
+    // Pull from remote
+    const result = await pullCollectionFromRemote(
+      gitRemote.url,
+      branch,
+      gitCacheDir,
+      gitRemote.syncFileName
+    );
+    
+    // If successful, merge the pulled collection into the local collection
+    if (result.success && result.collection) {
+      // Helper function to recursively update a node in the tree
+      const updateNodeInTree = (nodes: CollectionNode[], id: string, newData: CollectionNode): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].id === id) {
+            // Preserve local-only settings (gitRemote, lastSyncedAt)
+            const localSettings = nodes[i].settings;
+            nodes[i] = {
+              ...newData,
+              id: nodes[i].id, // Keep the original ID
+              settings: {
+                ...newData.settings,
+                gitRemote: localSettings?.gitRemote,
+                lastSyncedAt: new Date().toISOString(), // Update last synced time
+              },
+            };
+            return true;
+          }
+          if (nodes[i].children) {
+            if (updateNodeInTree(nodes[i].children!, id, newData)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      
+      // Update the collection in the tree
+      updateNodeInTree(config.collections, collectionId, result.collection);
+      
+      // Save the updated config
+      await saveCollectionsConfig(userDataPath, config);
     }
     
     return result;

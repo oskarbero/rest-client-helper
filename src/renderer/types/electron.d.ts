@@ -8,6 +8,13 @@ export interface GitSyncResult {
   fileName?: string; // The filename used for the collection in the repo
 }
 
+// Git pull result type
+export interface GitPullResult {
+  success: boolean;
+  message: string;
+  collection?: import('../../core/types').CollectionNode;
+}
+
 export interface ElectronAPI {
   // HTTP requests
   sendRequest: (request: HttpRequest) => Promise<HttpResponse>;
@@ -25,6 +32,7 @@ export interface ElectronAPI {
   updateCollectionSettings: (collectionId: string, settings: CollectionSettings) => Promise<CollectionNode | null>;
   // Collection Git sync
   syncCollectionToRemote: (collectionId: string) => Promise<GitSyncResult>;
+  pullCollectionFromRemote: (collectionId: string) => Promise<GitPullResult>;
   // Environments
   getEnvironments: () => Promise<Environment[]>;
   createEnvironment: (name: string) => Promise<Environment>;

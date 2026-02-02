@@ -9,6 +9,7 @@ interface CollectionSettingsEditorProps {
   settings: CollectionSettings | null;
   onUpdate: (collectionId: string, settings: CollectionSettings) => void;
   onSyncToRemote?: (collectionId: string) => void;
+  onPullFromRemote?: (collectionId: string) => void;
   activeEnvironment?: Environment | null;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -25,6 +26,7 @@ export function CollectionSettingsEditor({
   settings,
   onUpdate,
   onSyncToRemote,
+  onPullFromRemote,
   activeEnvironment = null,
   showToast,
 }: CollectionSettingsEditorProps) {
@@ -42,7 +44,9 @@ export function CollectionSettingsEditor({
   const [originalGitRemoteUrl, setOriginalGitRemoteUrl] = useState('');
   const [originalGitBranch, setOriginalGitBranch] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | undefined>(undefined);
+  const [hasSyncFileName, setHasSyncFileName] = useState(false);
 
   // Initialize editor when settings change
   useEffect(() => {
@@ -59,6 +63,7 @@ export function CollectionSettingsEditor({
       setOriginalGitRemoteUrl(settings.gitRemote?.url || '');
       setOriginalGitBranch(settings.gitRemote?.branch || '');
       setLastSyncedAt(settings.lastSyncedAt);
+      setHasSyncFileName(!!settings.gitRemote?.syncFileName);
     } else {
       setEditBaseUrl('');
       setEditAuth({ type: 'none' });
@@ -72,6 +77,7 @@ export function CollectionSettingsEditor({
       setOriginalGitRemoteUrl('');
       setOriginalGitBranch('');
       setLastSyncedAt(undefined);
+      setHasSyncFileName(false);
     }
   }, [settings]);
 
@@ -200,6 +206,25 @@ export function CollectionSettingsEditor({
       setIsSyncing(false);
     }
   }, [collectionId, editGitRemoteUrl, onSyncToRemote]);
+
+  // Handle pull from remote
+  const handlePullFromRemote = useCallback(async () => {
+    if (!onPullFromRemote || !hasSyncFileName) return;
+    
+    // Confirm before overwriting local changes
+    const confirmed = window.confirm(
+      'This will overwrite your local collection with the version from the remote repository. Any local changes will be lost. Continue?'
+    );
+    
+    if (!confirmed) return;
+    
+    setIsPulling(true);
+    try {
+      await onPullFromRemote(collectionId);
+    } finally {
+      setIsPulling(false);
+    }
+  }, [collectionId, hasSyncFileName, onPullFromRemote]);
 
   // Validate Git URL format
   const isValidGitUrl = useCallback((url: string): boolean => {
@@ -522,21 +547,22 @@ export function CollectionSettingsEditor({
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '16px',
-            marginTop: '16px'
+            gap: '12px',
+            marginTop: '16px',
+            flexWrap: 'wrap'
           }}>
             <button
               className="save-button"
               onClick={handleSyncToRemote}
-              disabled={!editGitRemoteUrl.trim() || !!gitUrlError || isSyncing || hasUnsavedChanges}
+              disabled={!editGitRemoteUrl.trim() || !!gitUrlError || isSyncing || isPulling || hasUnsavedChanges}
               title={
                 hasUnsavedChanges 
                   ? 'Save settings before syncing' 
                   : !editGitRemoteUrl.trim() 
                     ? 'Configure a remote URL first' 
-                    : 'Sync collection to remote repository'
+                    : 'Push collection to remote repository'
               }
-              style={{ minWidth: '120px' }}
+              style={{ minWidth: '100px' }}
             >
               {isSyncing ? (
                 <>
@@ -551,16 +577,54 @@ export function CollectionSettingsEditor({
                   >
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                   </svg>
-                  Syncing...
+                  Pushing...
                 </>
               ) : (
                 <>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M23 4v6h-6" />
-                    <path d="M1 20v-6h6" />
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    <path d="M17 8l4 4-4 4" />
+                    <path d="M3 12h18" />
                   </svg>
-                  Sync to Remote
+                  Push
+                </>
+              )}
+            </button>
+            
+            <button
+              className="save-button"
+              onClick={handlePullFromRemote}
+              disabled={!hasSyncFileName || isPulling || isSyncing || hasUnsavedChanges}
+              title={
+                !hasSyncFileName
+                  ? 'Push to remote first before pulling'
+                  : hasUnsavedChanges
+                    ? 'Save settings before pulling'
+                    : 'Pull collection from remote (overwrites local)'
+              }
+              style={{ minWidth: '100px' }}
+            >
+              {isPulling ? (
+                <>
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                    style={{ animation: 'spin 1s linear infinite' }}
+                  >
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  Pulling...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M7 8l-4 4 4 4" />
+                    <path d="M21 12H3" />
+                  </svg>
+                  Pull
                 </>
               )}
             </button>

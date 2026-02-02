@@ -756,7 +756,7 @@ function App() {
   // Handle syncing collection to Git remote
   const handleSyncToRemote = useCallback(async (collectionId: string) => {
     try {
-      showToast('Syncing collection to remote...', 'info');
+      showToast('Pushing collection to remote...', 'info');
       const result = await window.electronAPI.syncCollectionToRemote(collectionId);
       
       if (result.success) {
@@ -778,6 +778,43 @@ function App() {
       showToast(errorMessage, 'error');
     }
   }, [showToast, selectedCollectionForSettings]);
+
+  // Handle pulling collection from Git remote
+  const handlePullFromRemote = useCallback(async (collectionId: string) => {
+    try {
+      showToast('Pulling collection from remote...', 'info');
+      const result = await window.electronAPI.pullCollectionFromRemote(collectionId);
+      
+      if (result.success) {
+        showToast(result.message, 'success');
+        // Refresh collections tree to get the pulled data
+        const collections = await window.electronAPI.getCollectionsTree();
+        setCollectionsTree(collections);
+        // Update local collection settings if viewing this collection
+        if (selectedCollectionForSettings === collectionId) {
+          const updatedSettings = await window.electronAPI.getCollectionSettings(collectionId);
+          setCollectionSettings(updatedSettings);
+        }
+        // If we have a current request that was in this collection, we may need to refresh it
+        if (currentRequestId) {
+          const updatedNode = collections.flatMap(function findNode(n: CollectionNode): CollectionNode[] {
+            if (n.id === currentRequestId) return [n];
+            return n.children?.flatMap(findNode) || [];
+          })[0];
+          if (updatedNode?.type === 'request' && updatedNode.request) {
+            setRequest(JSON.parse(JSON.stringify(updatedNode.request)));
+            setOriginalRequest(JSON.parse(JSON.stringify(updatedNode.request)));
+          }
+        }
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('Failed to pull collection:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to pull collection';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast, selectedCollectionForSettings, currentRequestId]);
 
   // Get selected collection for settings
   const selectedCollection = selectedCollectionForSettings
@@ -893,6 +930,7 @@ function App() {
                 onEnvironmentSelect={handleEnvironmentSelect}
                 onOpenCollectionSettings={handleOpenCollectionSettings}
                 onSyncToRemote={handleSyncToRemote}
+                onPullFromRemote={handlePullFromRemote}
                 showToast={showToast}
               />
             </aside>
@@ -933,6 +971,7 @@ function App() {
                     settings={collectionSettings}
                     onUpdate={handleUpdateCollectionSettings}
                     onSyncToRemote={handleSyncToRemote}
+                    onPullFromRemote={handlePullFromRemote}
                     activeEnvironment={activeEnvironmentWithVariables}
                     showToast={showToast}
                   />
