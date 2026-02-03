@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable, CollectionSettings } from '../types';
 import { CONFIG } from '../constants';
-import { findNodeById } from '../utils';
+import { findNodeById, generateId } from '../utils';
 
 // Collections are stored in a single JSON file
 const COLLECTIONS_FILE = CONFIG.FILES.COLLECTIONS;
@@ -14,13 +14,6 @@ const ENVIRONMENTS_FILE = CONFIG.FILES.ENVIRONMENTS;
  */
 function getCollectionsFilePath(basePath: string): string {
   return path.join(basePath, COLLECTIONS_FILE);
-}
-
-/**
- * Generates a unique ID for a node
- */
-function generateId(): string {
-  return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**

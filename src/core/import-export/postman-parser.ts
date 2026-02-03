@@ -8,6 +8,7 @@ import {
   HttpMethod,
 } from '../types';
 import { createEmptyRequest } from '../types';
+import { generateId } from '../utils';
 
 // Postman collection v2.0 / v2.1 type definitions
 interface PostmanInfo {
@@ -439,8 +440,4 @@ function mapPostmanAuth(auth: PostmanAuth): AuthConfig {
     default:
       return { type: 'none' };
   }
-}
-
-function generateId(): string {
-  return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }

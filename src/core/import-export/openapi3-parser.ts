@@ -1,5 +1,6 @@
 import { CollectionNode, HttpRequest, AuthConfig, KeyValuePair, RequestBody, CollectionSettings } from '../types';
 import { createEmptyRequest } from '../types';
+import { generateId } from '../utils';
 
 // OpenAPI 3.0 type definitions
 interface OpenAPI3Spec {
@@ -348,11 +349,4 @@ function convertSecurityToAuth(
   }
 
   return { type: 'none' };
-}
-
-/**
- * Generates a unique ID
- */
-function generateId(): string {
-  return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
