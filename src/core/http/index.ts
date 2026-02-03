@@ -9,3 +9,5 @@ export {
   getHighlightedTokens,
 } from './response-parser';
 export type { Token, TokenType } from './response-parser';
+export { setFetch, clearFetch, getFetch, hasCustomFetch } from './fetch-provider';
+export type { FetchFunction } from './fetch-provider';

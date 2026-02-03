@@ -16,6 +16,8 @@ export {
   getHighlightedTokens,
 } from './http';
 export type { Token, TokenType } from './http';
+export { setFetch, clearFetch, getFetch, hasCustomFetch } from './http';
+export type { FetchFunction } from './http';
 
 export { saveState, loadState } from './persistence';
 export type { AppState, LoadedAppState } from './persistence';

@@ -15,24 +15,60 @@ src/
 
 ### Core Layer (`src/core/`)
 
-The core layer contains all business logic that is framework-agnostic and can be reused across different platforms (Electron, VS Code extension, etc.). This layer has no dependencies on Electron, React, or other UI frameworks.
+The core layer contains all business logic that is framework-agnostic and can be reused across different platforms (Electron, VS Code extension, etc.). This layer has **no dependencies on Electron, React, or other UI frameworks**.
 
-**Key Modules:**
-- `http-client.ts` - HTTP request execution
-- `auth-handler.ts` - Authentication handling
-- `variable-replacer.ts` - Environment variable substitution
-- `response-parser.ts` - Response formatting
-- `storage.ts` - Data persistence
-- `collection-settings-resolver.ts` - Settings inheritance
-- `openapi3-parser.ts` / `openapi3-exporter.ts` - OpenAPI import/export
-- `env-parser.ts` - .env file parsing
-- `state-persistence.ts` - Application state management
+**Directory Structure:**
+```
+src/core/
+├── index.ts              # Public API barrel (single entry point)
+├── types.ts              # All shared TypeScript types
+├── constants.ts          # Application constants
+├── utils.ts              # Pure utility functions
+├── http/                 # HTTP request/response handling
+│   ├── fetch-provider.ts # Injectable fetch abstraction
+│   ├── http-client.ts    # Request execution
+│   ├── auth-handler.ts   # Auth header generation
+│   └── response-parser.ts
+├── variables/            # Variable replacement
+│   ├── variable-replacer.ts
+│   └── env-parser.ts
+├── collection/           # Collection management
+│   ├── storage.ts
+│   ├── collection-settings-resolver.ts
+│   └── path-grouping.ts
+├── import-export/        # Import/export formats
+│   ├── postman-parser.ts
+│   ├── openapi3-parser.ts
+│   └── openapi3-exporter.ts
+├── persistence/          # App state persistence
+│   └── state-persistence.ts
+└── git/                  # Git sync functionality
+    └── collection-git-sync.ts
+```
 
 **Design Principles:**
 - Pure functions where possible
+- No Electron imports — fetch is injected via `setFetch()`
 - No side effects (except file I/O in storage)
 - Full TypeScript type coverage
+- Single barrel export (`import from '@core'`)
 - Easily testable
+
+**Fetch Injection:**
+
+The HTTP client uses an injectable fetch implementation to decouple core from Electron:
+
+```typescript
+// In Electron main process (src/main/index.ts)
+import { net } from 'electron';
+import { setFetch } from '../core';
+
+app.whenReady().then(() => {
+  setFetch(net.fetch.bind(net) as typeof globalThis.fetch);
+});
+```
+
+This allows the same core module to work in VS Code extensions or other environments by providing a different fetch implementation.
 
 ### Main Process (`src/main/`)
 
@@ -237,7 +273,17 @@ See [TESTING.md](./TESTING.md) for detailed testing information.
 
 ## Future Considerations
 
-- **VS Code Extension**: Core modules can be reused in VS Code extension
-- **Web Version**: Core modules can be used in web version (with different storage)
+- **VS Code Extension**: Core modules are ready for reuse — inject `globalThis.fetch` and provide storage paths
+- **Web Version**: Core modules can be used in web version (with different storage backend)
 - **Plugin System**: Architecture supports future plugin system
 - **Multi-window**: IPC pattern supports multiple windows
+
+## Core Module Reusability
+
+The core module is designed to be fully reusable outside of Electron. To use it in another environment:
+
+1. **Provide a fetch implementation** via `setFetch()` at startup
+2. **Provide base paths** for file storage operations (collections, environments, state)
+3. **Import from the barrel** only: `import { ... } from '@core'`
+
+See [`src/core/README.md`](../src/core/README.md) for detailed integration guidelines.
