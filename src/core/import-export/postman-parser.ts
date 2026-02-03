@@ -55,6 +55,8 @@ interface PostmanBody {
 }
 
 interface PostmanAuthBasic {
+  key?: string;
+  value?: string;
   username?: string;
   password?: string;
 }
@@ -359,12 +361,13 @@ function mapPostmanAuth(auth: PostmanAuth): AuthConfig {
     case 'basic': {
       const basic = auth.basic;
       if (Array.isArray(basic) && basic.length > 0) {
-        const b = basic[0];
+        const usernameEntry = basic.find((b) => (b.key || '').toLowerCase() === 'username') ?? basic[0];
+        const passwordEntry = basic.find((b) => (b.key || '').toLowerCase() === 'password') ?? basic[1] ?? basic[0];
         return {
           type: 'basic',
           basic: {
-            username: b.username ?? '',
-            password: b.password ?? '',
+            username: usernameEntry.value ?? usernameEntry.username ?? '',
+            password: passwordEntry.value ?? passwordEntry.password ?? '',
           },
         };
       }
