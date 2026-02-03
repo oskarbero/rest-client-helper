@@ -490,7 +490,13 @@ export function registerIpcHandlers(): void {
       };
       
       // Update the collection in the tree
-      updateNodeInTree(config.collections, collectionId, result.collection);
+      const wasUpdated = updateNodeInTree(config.collections, collectionId, result.collection);
+      if (!wasUpdated) {
+        return {
+          success: false,
+          message: `Collection with id "${collectionId}" no longer exists locally. Pull not applied.`,
+        };
+      }
       
       // Save the updated config
       await saveCollectionsConfig(userDataPath, config);
