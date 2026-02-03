@@ -1,9 +1,11 @@
 import { ipcMain, app, dialog } from 'electron';
 import fs from 'fs';
 import path from 'path';
-import { sendRequest } from '../core/http-client';
-import { saveState, loadState, LoadedAppState } from '../core/state-persistence';
-import { 
+import {
+  sendRequest,
+  saveState,
+  loadState,
+  LoadedAppState,
   getCollectionsTree,
   createCollection,
   saveRequestToCollection,
@@ -22,14 +24,22 @@ import {
   loadEnvironmentsConfig,
   saveEnvironmentsConfig,
   loadCollectionsConfig,
-  saveCollectionsConfig
-} from '../core/storage';
-import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
-import { parseOpenAPI3 } from '../core/openapi3-parser';
-import { exportToOpenAPI3 } from '../core/openapi3-exporter';
-import { parsePostmanCollection } from '../core/postman-parser';
-import { findNodeById } from '../core/utils';
-import { syncCollectionToRemote, pullCollectionFromRemote, GitSyncResult, GitPullResult } from '../core/collection-git-sync';
+  saveCollectionsConfig,
+  parseOpenAPI3,
+  exportToOpenAPI3,
+  parsePostmanCollection,
+  findNodeById,
+  syncCollectionToRemote,
+  pullCollectionFromRemote,
+  GitSyncResult,
+  GitPullResult,
+  HttpRequest,
+  HttpResponse,
+  CollectionNode,
+  Environment,
+  EnvironmentVariable,
+  CollectionSettings,
+} from '../core';
 
 /**
  * Registers all IPC handlers for communication between renderer and main process
@@ -175,7 +185,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('environment:readVariablesFromFile', async (_event, filePath: string): Promise<EnvironmentVariable[]> => {
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      const { parseEnvFile } = await import('../core/env-parser');
+      const { parseEnvFile } = await import('../core');
       return parseEnvFile(content);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to read file';
@@ -196,7 +206,7 @@ export function registerIpcHandlers(): void {
     // If environment is linked to a file, merge file variables with user-defined variables
     if (environment.envFilePath) {
       try {
-        const { parseEnvFile } = await import('../core/env-parser');
+        const { parseEnvFile } = await import('../core');
         const content = await fs.promises.readFile(environment.envFilePath, 'utf-8');
         const fileVariables = parseEnvFile(content);
         

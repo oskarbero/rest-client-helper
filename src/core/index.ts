@@ -3,17 +3,30 @@
 // and can be reused in a VS Code extension
 
 export * from './types';
-export { sendRequest } from './http-client';
-export { saveState, loadState } from './state-persistence';
-export { generateAuthHeaders, generateAuthQueryParam, isAuthConfigValid } from './auth-handler';
-export { 
-  formatResponseBody, 
-  formatJson, 
-  formatXml, 
-  detectContentType, 
-  tokenizeJson, 
-  getHighlightedTokens 
-} from './response-parser';
+export { CONFIG } from './constants';
+export { findNodeById, isValidUrl, deepEqual } from './utils';
+
+export { sendRequest, generateAuthHeaders, generateAuthQueryParam, isAuthConfigValid, createEmptyAuth } from './http';
+export {
+  formatResponseBody,
+  formatJson,
+  formatXml,
+  detectContentType,
+  tokenizeJson,
+  getHighlightedTokens,
+} from './http';
+export type { Token, TokenType } from './http';
+
+export { saveState, loadState } from './persistence';
+export type { AppState, LoadedAppState } from './persistence';
+
+export {
+  replaceVariables,
+  resolveRequestVariables,
+  resolveRequestWithCollectionSettings,
+  parseEnvFile,
+} from './variables';
+
 export {
   loadCollectionsConfig,
   saveCollectionsConfig,
@@ -22,7 +35,34 @@ export {
   saveRequestToCollection,
   deleteCollectionNode,
   renameCollectionNode,
-  moveCollectionNode
-} from './storage';
-export { findNodeById, isValidUrl, deepEqual } from './utils';
-export { CONFIG } from './constants';
+  moveCollectionNode,
+  updateCollectionSettings,
+  getCollectionSettings,
+  loadEnvironmentsConfig,
+  saveEnvironmentsConfig,
+  getEnvironments,
+  createEnvironment,
+  updateEnvironment,
+  deleteEnvironment,
+  duplicateEnvironment,
+  setActiveEnvironment,
+  getActiveEnvironment,
+  getAncestorPath,
+  mergeSettings,
+  resolveCollectionSettings,
+  findCollectionPath,
+  findParentCollectionId,
+  groupRequestsByPath,
+  flattenPathGroup,
+} from './collection';
+export type { PathGroup } from './collection';
+
+export { parsePostmanCollection, parseOpenAPI3, exportToOpenAPI3 } from './import-export';
+
+export {
+  getOrCloneRepo,
+  pushCollectionSubtree,
+  syncCollectionToRemote,
+  pullCollectionFromRemote,
+} from './git';
+export type { GitSyncResult, GitPullResult } from './git';

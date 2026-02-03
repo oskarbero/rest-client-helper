@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { AuthConfig, AuthType, CollectionSettings, Environment } from '../../../core/types';
+import { AuthConfig, AuthType, CollectionSettings, Environment } from '@core';
 import { VariableInput } from '../common/VariableInput';
 
 interface AuthTabProps {

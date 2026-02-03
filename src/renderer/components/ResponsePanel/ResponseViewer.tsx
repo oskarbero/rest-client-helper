@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HttpResponse, HttpRequest } from '../../../core/types';
+import { HttpResponse, HttpRequest } from '@core';
 import { ResponseHeaders } from './ResponseHeaders';
 import { SyntaxHighlighter } from './SyntaxHighlighter';
 import { RequestDetails } from './RequestDetails';

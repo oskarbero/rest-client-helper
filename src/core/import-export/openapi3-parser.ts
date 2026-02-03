@@ -1,5 +1,5 @@
-import { CollectionNode, HttpRequest, AuthConfig, KeyValuePair, RequestBody, CollectionSettings } from './types';
-import { createEmptyRequest } from './types';
+import { CollectionNode, HttpRequest, AuthConfig, KeyValuePair, RequestBody, CollectionSettings } from '../types';
+import { createEmptyRequest } from '../types';
 
 // OpenAPI 3.0 type definitions
 interface OpenAPI3Spec {

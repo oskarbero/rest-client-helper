@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePostmanCollection } from '@core/postman-parser';
-import type { CollectionNode, HttpRequest, KeyValuePair } from '@core/types';
+import { parsePostmanCollection, type CollectionNode, type HttpRequest, type KeyValuePair } from '@core';
 
 describe('postman-parser', () => {
   describe('parsePostmanCollection', () => {

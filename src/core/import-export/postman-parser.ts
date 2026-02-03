@@ -6,8 +6,8 @@ import {
   RequestBody,
   CollectionSettings,
   HttpMethod,
-} from './types';
-import { createEmptyRequest } from './types';
+} from '../types';
+import { createEmptyRequest } from '../types';
 
 // Postman collection v2.0 / v2.1 type definitions
 interface PostmanInfo {

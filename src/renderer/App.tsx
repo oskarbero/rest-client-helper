@@ -6,12 +6,27 @@ import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
 import { EnvironmentEditor } from './components/EnvironmentEditor/EnvironmentEditor';
 import { CollectionSettingsEditor } from './components/CollectionSettings/CollectionSettingsEditor';
-import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, CollectionSettings, createEmptyRequest } from '../core/types';
-import { resolveRequestVariables, resolveRequestWithCollectionSettings, replaceVariables } from '../core/variable-replacer';
-import { resolveCollectionSettings, findParentCollectionId, getAncestorPath } from '../core/collection-settings-resolver';
-import type { LoadedAppState } from '../core/state-persistence';
-import { CONFIG } from '../core/constants';
-import { deepEqual, findNodeById } from '../core/utils';
+import {
+  HttpRequest,
+  HttpResponse,
+  HttpMethod,
+  CollectionNode,
+  RecentRequest,
+  Environment,
+  EnvironmentVariable,
+  CollectionSettings,
+  createEmptyRequest,
+  resolveRequestVariables,
+  resolveRequestWithCollectionSettings,
+  replaceVariables,
+  resolveCollectionSettings,
+  findParentCollectionId,
+  getAncestorPath,
+  CONFIG,
+  deepEqual,
+  findNodeById,
+} from '@core';
+import type { LoadedAppState } from '@core';
 
 // Toast notification type
 interface Toast {

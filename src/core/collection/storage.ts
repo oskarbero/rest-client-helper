@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable, CollectionSettings } from './types';
-import { CONFIG } from './constants';
-import { findNodeById } from './utils';
+import { CollectionNode, CollectionsConfig, HttpRequest, Environment, EnvironmentsConfig, EnvironmentVariable, CollectionSettings } from '../types';
+import { CONFIG } from '../constants';
+import { findNodeById } from '../utils';
 
 // Collections are stored in a single JSON file
 const COLLECTIONS_FILE = CONFIG.FILES.COLLECTIONS;

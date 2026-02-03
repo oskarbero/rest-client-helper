@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { CollectionSettings, AuthConfig, AuthType, KeyValuePair, Environment, GitRemoteConfig } from '../../../core/types';
+import { CollectionSettings, AuthConfig, AuthType, KeyValuePair, Environment, GitRemoteConfig } from '@core';
 import { KeyValueEditor } from '../common/KeyValueEditor';
 import { VariableInput } from '../common/VariableInput';
 

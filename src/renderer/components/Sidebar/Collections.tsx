@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay, useDraggable, useDroppable, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { CollectionNode, RecentRequest, Environment, EnvironmentVariable } from '../../../core/types';
+import { CollectionNode, RecentRequest, Environment, EnvironmentVariable } from '@core';
 import { ContextMenu, ContextMenuAction } from './ContextMenu';
 import { Environments } from './Environments';
 import { PathGroupedView } from './PathGroupedView';

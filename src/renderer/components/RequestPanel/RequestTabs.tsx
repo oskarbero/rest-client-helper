@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HttpRequest, KeyValuePair, RequestBody, AuthConfig, CollectionSettings, Environment } from '../../../core/types';
-import { generateAuthHeaders } from '../../../core/auth-handler';
+import { HttpRequest, KeyValuePair, RequestBody, AuthConfig, CollectionSettings, Environment, generateAuthHeaders } from '@core';
 import { HeadersTab } from './HeadersTab';
 import { ParamsTab } from './ParamsTab';
 import { BodyTab } from './BodyTab';

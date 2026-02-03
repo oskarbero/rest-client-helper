@@ -1,5 +1,5 @@
-import { HttpRequest, Environment, EnvironmentVariable, KeyValuePair, CollectionSettings } from './types';
-import { generateAuthHeaders } from './auth-handler';
+import { HttpRequest, Environment, EnvironmentVariable, KeyValuePair, CollectionSettings } from '../types';
+import { generateAuthHeaders } from '../http/auth-handler';
 
 /**
  * Replaces variables in a text string using {{variable_name}} syntax

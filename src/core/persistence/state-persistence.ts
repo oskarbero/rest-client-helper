@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { HttpRequest, createEmptyRequest } from './types';
-import { CONFIG } from './constants';
+import { HttpRequest, createEmptyRequest } from '../types';
+import { CONFIG } from '../constants';
 
 const STATE_FILE_NAME = CONFIG.FILES.STATE;
 

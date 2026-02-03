@@ -1,7 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
-import type { LoadedAppState } from '../core/state-persistence';
-import type { GitSyncResult, GitPullResult } from '../core/collection-git-sync';
+import type {
+  HttpRequest,
+  HttpResponse,
+  CollectionNode,
+  Environment,
+  EnvironmentVariable,
+  CollectionSettings,
+  LoadedAppState,
+  GitSyncResult,
+  GitPullResult,
+} from '../core';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {

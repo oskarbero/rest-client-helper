@@ -1,7 +1,7 @@
-import { HttpRequest, HttpResponse, KeyValuePair } from './types';
+import { HttpRequest, HttpResponse, KeyValuePair } from '../types';
 import { generateAuthHeaders, generateAuthQueryParam } from './auth-handler';
-import { CONFIG } from './constants';
-import { isValidUrl } from './utils';
+import { CONFIG } from '../constants';
+import { isValidUrl } from '../utils';
 
 /* TODO: Remove relying on electron fetch, core module should be independent of UI tool*/
 
