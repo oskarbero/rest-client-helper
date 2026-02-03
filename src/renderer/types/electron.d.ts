@@ -1,19 +1,7 @@
 import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../../core/types';
+import type { GitSyncResult, GitPullResult } from '../../core/collection-git-sync';
 
-// Git sync result type
-export interface GitSyncResult {
-  success: boolean;
-  message: string;
-  commitHash?: string;
-  fileName?: string; // The filename used for the collection in the repo
-}
-
-// Git pull result type
-export interface GitPullResult {
-  success: boolean;
-  message: string;
-  collection?: import('../../core/types').CollectionNode;
-}
+export type { GitSyncResult, GitPullResult } from '../../core/collection-git-sync';
 
 export interface ElectronAPI {
   // HTTP requests
