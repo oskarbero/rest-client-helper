@@ -39,6 +39,8 @@ interface CollectionsProps {
   onTabChange?: (tab: 'recent' | 'environments' | 'collections') => void;
   onEnvironmentSelect?: (id: string | null) => void;
   onOpenCollectionSettings?: (collectionId: string) => void;
+  onSyncToRemote?: (collectionId: string) => void;
+  onPullFromRemote?: (collectionId: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onImportOpenAPI3?: () => void;
   onExportOpenAPI3?: (collectionIds?: string[]) => void;
@@ -441,6 +443,8 @@ export function Collections({
   onTabChange,
   onEnvironmentSelect,
   onOpenCollectionSettings,
+  onSyncToRemote,
+  onPullFromRemote,
   showToast,
   onImportOpenAPI3,
   onExportOpenAPI3,
@@ -772,6 +776,19 @@ export function Collections({
       case 'settings':
         if (node.type === 'collection') {
           onOpenCollectionSettings?.(node.id);
+        }
+        break;
+      case 'sync-to-remote':
+        if (node.type === 'collection' && node.settings?.gitRemote?.url) {
+          onSyncToRemote?.(node.id);
+        }
+        break;
+      case 'pull-from-remote':
+        if (node.type === 'collection' && node.settings?.gitRemote?.syncFileName) {
+          // Confirm before overwriting
+          if (window.confirm('This will overwrite your local collection with the version from the remote repository. Continue?')) {
+            onPullFromRemote?.(node.id);
+          }
         }
         break;
     }

@@ -4,6 +4,7 @@ node_modules/
 # Build outputs
 dist/
 release/
+coverage/
 
 # IDE
 .vscode/
@@ -19,9 +20,10 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Environment
+# Environment (secrets, local overrides)
 .env
-.env.local
+.env.*
+!.env.example
 
 examples/
 electron-v*.zip
