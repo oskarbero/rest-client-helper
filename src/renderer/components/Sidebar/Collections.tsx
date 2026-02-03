@@ -43,6 +43,7 @@ interface CollectionsProps {
   onPullFromRemote?: (collectionId: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onImportOpenAPI3?: () => void;
+  onImportPostman?: () => void;
   onExportOpenAPI3?: (collectionIds?: string[]) => void;
 }
 
@@ -447,6 +448,7 @@ export function Collections({
   onPullFromRemote,
   showToast,
   onImportOpenAPI3,
+  onImportPostman,
   onExportOpenAPI3,
 }: CollectionsProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
@@ -1144,6 +1146,17 @@ export function Collections({
                 className="collections-action-btn"
                 onClick={() => onImportOpenAPI3?.()}
                 title="Import OpenAPI 3"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+              <button
+                className="collections-action-btn"
+                onClick={() => onImportPostman?.()}
+                title="Import Postman Collection"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

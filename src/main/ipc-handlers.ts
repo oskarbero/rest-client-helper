@@ -27,6 +27,7 @@ import {
 import { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
 import { parseOpenAPI3 } from '../core/openapi3-parser';
 import { exportToOpenAPI3 } from '../core/openapi3-exporter';
+import { parsePostmanCollection } from '../core/postman-parser';
 import { findNodeById } from '../core/utils';
 import { syncCollectionToRemote, pullCollectionFromRemote, GitSyncResult, GitPullResult } from '../core/collection-git-sync';
 
@@ -289,6 +290,47 @@ export function registerIpcHandlers(): void {
       config.collections.push(node);
     }
 
+    await saveCollectionsConfig(userDataPath, config);
+
+    return importedNodes;
+  });
+
+  // Postman collection import handler
+  ipcMain.handle('postman:import', async (): Promise<CollectionNode[]> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Import Postman Collection',
+      filters: [
+        { name: 'Postman Collection', extensions: ['json'] },
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+      return [];
+    }
+
+    const filePath = result.filePaths[0];
+    const content = await fs.promises.readFile(filePath, 'utf-8');
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch (error) {
+      throw new Error(`Failed to parse JSON file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    const importedNodes = parsePostmanCollection(parsed);
+
+    if (importedNodes.length === 0) {
+      throw new Error('No collections found in the Postman file');
+    }
+
+    const config = await loadCollectionsConfig(userDataPath);
+    for (const node of importedNodes) {
+      config.collections.push(node);
+    }
     await saveCollectionsConfig(userDataPath, config);
 
     return importedNodes;

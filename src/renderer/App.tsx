@@ -489,6 +489,21 @@ function App() {
     }
   }, [showToast]);
 
+  const handleImportPostman = useCallback(async () => {
+    try {
+      const importedNodes = await window.electronAPI.importPostman();
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      if (importedNodes.length > 0) {
+        showToast(`Imported ${importedNodes.length} collection(s) from Postman`, 'success');
+      }
+    } catch (error) {
+      console.error('Failed to import Postman:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import Postman';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
   const handleExportOpenAPI3 = useCallback(async (collectionIds?: string[]) => {
     try {
       await window.electronAPI.exportOpenAPI3(collectionIds);
@@ -917,6 +932,7 @@ function App() {
                 onSaveFormTriggered={() => setTriggerSaveForm(false)}
                 hasUnsavedChanges={hasUnsavedChanges}
                 onImportOpenAPI3={handleImportOpenAPI3}
+                onImportPostman={handleImportPostman}
                 onExportOpenAPI3={handleExportOpenAPI3}
                 environments={environments}
                 activeEnvironmentId={activeEnvironment?.id || null}

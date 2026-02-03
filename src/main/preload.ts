@@ -37,6 +37,8 @@ export interface ElectronAPI {
   // OpenAPI 3 import/export
   importOpenAPI3: () => Promise<CollectionNode[]>;
   exportOpenAPI3: (collectionIds?: string[]) => Promise<void>;
+  // Postman collection import
+  importPostman: () => Promise<CollectionNode[]>;
 }
 
 // Expose protected methods to the renderer process
@@ -81,4 +83,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // OpenAPI 3 import/export
   importOpenAPI3: () => ipcRenderer.invoke('openapi3:import'),
   exportOpenAPI3: (collectionIds?: string[]) => ipcRenderer.invoke('openapi3:export', collectionIds),
+  // Postman collection import
+  importPostman: () => ipcRenderer.invoke('postman:import'),
 } as ElectronAPI);
