@@ -114,9 +114,11 @@ export function CollectionSettingsEditor({
     // Build git remote config if URL is provided
     const gitRemoteUrl = editGitRemoteUrl.trim();
     const gitBranch = editGitBranch.trim();
+    const existingSyncFileName = settings?.gitRemote?.syncFileName;
     const gitRemote = gitRemoteUrl ? {
       url: gitRemoteUrl,
       branch: gitBranch || undefined,
+      syncFileName: existingSyncFileName,
     } : undefined;
 
     const settingsToSave: CollectionSettings = {
@@ -140,7 +142,7 @@ export function CollectionSettingsEditor({
       const errorMessage = error instanceof Error ? error.message : 'Failed to update collection settings';
       showToast?.(errorMessage, 'error');
     }
-  }, [collectionId, editBaseUrl, editAuth, editHeaders, editGitRemoteUrl, editGitBranch, lastSyncedAt, onUpdate, showToast]);
+  }, [collectionId, editBaseUrl, editAuth, editHeaders, editGitRemoteUrl, editGitBranch, lastSyncedAt, onUpdate, settings?.gitRemote?.syncFileName, showToast]);
 
   const handleCancel = useCallback(() => {
     if (settings) {
