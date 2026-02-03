@@ -414,7 +414,7 @@ function mapPostmanAuth(auth: PostmanAuth): AuthConfig {
         return {
           type: 'api-key',
           apiKey: {
-            key: keyEntry?.key ?? 'apikey',
+            key: keyEntry?.value ?? 'apikey',
             value: valueEntry?.value ?? '',
             addTo: addTo as 'header' | 'query',
           },
