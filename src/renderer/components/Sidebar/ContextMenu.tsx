@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { CollectionNode } from '../../../core/types';
+import { CollectionNode } from '@core';
 
 export type ContextMenuAction = 
   | 'add-request' 

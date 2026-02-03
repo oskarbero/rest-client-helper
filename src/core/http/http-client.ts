@@ -1,9 +1,8 @@
-import { HttpRequest, HttpResponse, KeyValuePair } from './types';
+import { HttpRequest, HttpResponse, KeyValuePair } from '../types';
 import { generateAuthHeaders, generateAuthQueryParam } from './auth-handler';
-import { CONFIG } from './constants';
-import { isValidUrl } from './utils';
-
-/* TODO: Remove relying on electron fetch, core module should be independent of UI tool*/
+import { CONFIG } from '../constants';
+import { isValidUrl } from '../utils';
+import { getFetch, hasCustomFetch } from './fetch-provider';
 
 /**
  * Determines the proxy URL for a given target URL based on environment variables.
@@ -45,29 +44,18 @@ function getProxyForUrl(targetUrl: string): string | null {
 }
 
 /**
- * Gets the appropriate fetch function.
- * In Electron main process, uses net.fetch which respects system proxy settings.
- * Falls back to global fetch otherwise.
+ * Logs proxy configuration for debugging when using fallback fetch.
+ * Only logs once per session to avoid spam.
  */
-function getProxyAwareFetch(): typeof fetch {
-  try {
-    // Try to use Electron's net module which respects proxy settings
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { net } = require('electron');
-    if (net && typeof net.fetch === 'function') {
-      console.log('Using Electron net.fetch (proxy-aware)');
-      return net.fetch.bind(net);
-    }
-  } catch {
-    // Not in Electron main process
-  }
+let proxyWarningLogged = false;
+function logProxyWarningIfNeeded(): void {
+  if (proxyWarningLogged) return;
   
-  // Log proxy configuration for debugging
   const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
   const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
   const noProxy = process.env.NO_PROXY || process.env.no_proxy;
   
-  if (httpProxy || httpsProxy) {
+  if ((httpProxy || httpsProxy) && !hasCustomFetch()) {
     console.log('Proxy environment detected:', {
       HTTP_PROXY: httpProxy || '(not set)',
       HTTPS_PROXY: httpsProxy || '(not set)',
@@ -75,15 +63,11 @@ function getProxyAwareFetch(): typeof fetch {
     });
     console.warn(
       'Warning: Using standard fetch which may not respect HTTP_PROXY/HTTPS_PROXY. ' +
-      'Ensure requests are made from Electron main process for full proxy support.'
+      'For full proxy support, register a proxy-aware fetch implementation via setFetch().'
     );
+    proxyWarningLogged = true;
   }
-  
-  return globalThis.fetch;
 }
-
-// Cache the fetch function
-let proxyAwareFetch: typeof fetch | null = null;
 
 /**
  * Sends an HTTP request and returns the response
@@ -147,7 +131,7 @@ export async function sendRequest(request: HttpRequest, signal?: AbortSignal): P
       signal: abortSignal,
     };
 
-    // Add body for non-GET requests (will be enhanced in Milestone 4)
+    // Add body for non-GET requests
     if (request.method !== 'GET' && request.method !== 'HEAD' && request.body.type !== 'none') {
       fetchOptions.body = request.body.content;
       // Set Content-Type if not already set
@@ -160,13 +144,14 @@ export async function sendRequest(request: HttpRequest, signal?: AbortSignal): P
       }
     }
 
-    // Make the request using proxy-aware fetch
+    // Make the request using the injected or fallback fetch
     let response: Response;
     try {
-      // Initialize proxy-aware fetch on first use
-      if (!proxyAwareFetch) {
-        proxyAwareFetch = getProxyAwareFetch();
-      }
+      // Log proxy warning if needed (only once)
+      logProxyWarningIfNeeded();
+      
+      // Get fetch implementation from provider
+      const fetchFn = getFetch();
       
       // Log proxy info for debugging
       const proxyUrl = getProxyForUrl(url);
@@ -174,7 +159,7 @@ export async function sendRequest(request: HttpRequest, signal?: AbortSignal): P
         console.log(`Request to ${url} should use proxy: ${proxyUrl}`);
       }
       
-      response = await proxyAwareFetch(url, fetchOptions);
+      response = await fetchFn(url, fetchOptions);
       clearTimeout(timeoutId);
     } catch (error) {
       clearTimeout(timeoutId);

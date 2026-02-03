@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findNodeById, isValidUrl, deepEqual } from '@core/utils';
-import type { CollectionNode } from '@core/types';
+import { findNodeById, isValidUrl, deepEqual, type CollectionNode } from '@core';
 
 describe('utils', () => {
   describe('isValidUrl', () => {

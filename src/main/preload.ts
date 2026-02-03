@@ -1,7 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../core/types';
-import type { LoadedAppState } from '../core/state-persistence';
-import type { GitSyncResult, GitPullResult } from '../core/collection-git-sync';
+import type {
+  HttpRequest,
+  HttpResponse,
+  CollectionNode,
+  Environment,
+  EnvironmentVariable,
+  CollectionSettings,
+  LoadedAppState,
+  GitSyncResult,
+  GitPullResult,
+} from '../core';
 
 // Define the API that will be exposed to the renderer
 export interface ElectronAPI {
@@ -37,6 +45,8 @@ export interface ElectronAPI {
   // OpenAPI 3 import/export
   importOpenAPI3: () => Promise<CollectionNode[]>;
   exportOpenAPI3: (collectionIds?: string[]) => Promise<void>;
+  // Postman collection import
+  importPostman: () => Promise<CollectionNode[]>;
 }
 
 // Expose protected methods to the renderer process
@@ -81,4 +91,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // OpenAPI 3 import/export
   importOpenAPI3: () => ipcRenderer.invoke('openapi3:import'),
   exportOpenAPI3: (collectionIds?: string[]) => ipcRenderer.invoke('openapi3:export', collectionIds),
+  // Postman collection import
+  importPostman: () => ipcRenderer.invoke('postman:import'),
 } as ElectronAPI);

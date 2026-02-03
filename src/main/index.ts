@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, net } from 'electron';
 import path from 'path';
 import { registerIpcHandlers } from './ipc-handlers';
+import { setFetch } from '../core';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -31,6 +32,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Register Electron's proxy-aware fetch for core HTTP client
+  // This ensures requests respect system proxy settings
+  // Cast needed because Electron's net.fetch has slightly different types than standard fetch
+  setFetch(net.fetch.bind(net) as typeof globalThis.fetch);
+  
   registerIpcHandlers();
   createWindow();
 });

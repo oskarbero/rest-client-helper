@@ -1,5 +1,5 @@
 import React from 'react';
-import { RequestBody, BodyType } from '../../../core/types';
+import { RequestBody, BodyType } from '@core';
 
 interface BodyTabProps {
   body: RequestBody;

@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay, useDraggable, useDroppable, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { CollectionNode, RecentRequest, Environment, EnvironmentVariable } from '../../../core/types';
+import { CollectionNode, RecentRequest, Environment, EnvironmentVariable } from '@core';
 import { ContextMenu, ContextMenuAction } from './ContextMenu';
 import { Environments } from './Environments';
 import { PathGroupedView } from './PathGroupedView';
@@ -43,6 +43,7 @@ interface CollectionsProps {
   onPullFromRemote?: (collectionId: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   onImportOpenAPI3?: () => void;
+  onImportPostman?: () => void;
   onExportOpenAPI3?: (collectionIds?: string[]) => void;
 }
 
@@ -447,11 +448,14 @@ export function Collections({
   onPullFromRemote,
   showToast,
   onImportOpenAPI3,
+  onImportPostman,
   onExportOpenAPI3,
 }: CollectionsProps) {
   const [activeTab, setActiveTab] = useState<SidebarTab>('collections');
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [expandedGroups, setExpandedGroups] = useState<Map<string, Set<string>>>(new Map());
+  const [importDropdownOpen, setImportDropdownOpen] = useState(false);
+  const importDropdownRef = useRef<HTMLDivElement>(null);
   
   // Notify parent when tab changes
   useEffect(() => {
@@ -462,6 +466,18 @@ export function Collections({
       onEnvironmentSelect?.(activeEnvironmentId);
     }
   }, [activeTab, activeEnvironmentId, selectedEnvironmentId, onTabChange, onEnvironmentSelect]);
+
+  // Close import dropdown on click outside
+  useEffect(() => {
+    if (!importDropdownOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (importDropdownRef.current && !importDropdownRef.current.contains(event.target as Node)) {
+        setImportDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [importDropdownOpen]);
   
   const handleToggleGroup = useCallback((collectionId: string, groupId: string) => {
     setExpandedGroups(prev => {
@@ -1140,17 +1156,43 @@ export function Collections({
                   <polyline points="7 3 7 8 15 8" />
                 </svg>
               </button>
-              <button
-                className="collections-action-btn"
-                onClick={() => onImportOpenAPI3?.()}
-                title="Import OpenAPI 3"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              </button>
+              <div className="collections-import-dropdown" ref={importDropdownRef}>
+                <button
+                  className={`collections-action-btn ${importDropdownOpen ? 'active' : ''}`}
+                  onClick={() => setImportDropdownOpen((open) => !open)}
+                  title="Import collection"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+                {importDropdownOpen && (
+                  <div className="collections-import-dropdown-menu">
+                    <button
+                      type="button"
+                      className="collections-import-dropdown-item"
+                      onClick={() => {
+                        onImportOpenAPI3?.();
+                        setImportDropdownOpen(false);
+                      }}
+                    >
+                      OpenAPI 3
+                    </button>
+                    <button
+                      type="button"
+                      className="collections-import-dropdown-item"
+                      onClick={() => {
+                        onImportPostman?.();
+                        setImportDropdownOpen(false);
+                      }}
+                    >
+                      Postman Collection
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 className="collections-action-btn"
                 onClick={() => onExportOpenAPI3?.()}

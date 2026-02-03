@@ -1,4 +1,4 @@
-import { CollectionNode, HttpRequest, AuthConfig } from './types';
+import { CollectionNode, HttpRequest, AuthConfig } from '../types';
 
 // OpenAPI 3.0 type definitions for export
 interface OpenAPI3Spec {

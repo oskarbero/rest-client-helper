@@ -1,7 +1,6 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { HttpMethod, KeyValuePair, Environment, EnvironmentVariable } from '../../../core/types';
+import { HttpMethod, KeyValuePair, Environment, EnvironmentVariable, replaceVariables } from '@core';
 import { VariableInput } from '../common/VariableInput';
-import { replaceVariables } from '../../../core/variable-replacer';
 
 interface UrlBarProps {
   url: string;

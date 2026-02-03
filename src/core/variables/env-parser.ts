@@ -1,4 +1,4 @@
-import { EnvironmentVariable } from './types';
+import { EnvironmentVariable } from '../types';
 
 /**
  * Parses a .env file content and returns an array of environment variables

@@ -1,5 +1,5 @@
 import React from 'react';
-import { HttpRequest } from '../../../core/types';
+import { HttpRequest } from '@core';
 import { SyntaxHighlighter } from './SyntaxHighlighter';
 
 interface RequestDetailsProps {

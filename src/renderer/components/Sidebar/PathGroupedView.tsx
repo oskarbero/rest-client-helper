@@ -1,6 +1,5 @@
 import React from 'react';
-import { CollectionNode } from '../../../core/types';
-import { PathGroup, groupRequestsByPath } from '../../../core/path-grouping';
+import { CollectionNode, PathGroup, groupRequestsByPath } from '@core';
 
 interface PathGroupedViewProps {
   collection: CollectionNode;

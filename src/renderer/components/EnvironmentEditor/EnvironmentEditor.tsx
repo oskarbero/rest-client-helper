@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Environment, EnvironmentVariable } from '../../../core/types';
+import { Environment, EnvironmentVariable } from '@core';
 
 interface EnvironmentEditorProps {
   environment: Environment | null;

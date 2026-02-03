@@ -1,4 +1,4 @@
-import { AuthConfig, KeyValuePair } from './types';
+import { AuthConfig, KeyValuePair } from '../types';
 
 /**
  * Generates authentication headers based on the auth configuration

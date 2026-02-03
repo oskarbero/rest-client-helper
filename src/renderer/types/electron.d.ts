@@ -1,7 +1,15 @@
-import type { HttpRequest, HttpResponse, CollectionNode, Environment, EnvironmentVariable, CollectionSettings } from '../../core/types';
-import type { GitSyncResult, GitPullResult } from '../../core/collection-git-sync';
+import type {
+  HttpRequest,
+  HttpResponse,
+  CollectionNode,
+  Environment,
+  EnvironmentVariable,
+  CollectionSettings,
+  GitSyncResult,
+  GitPullResult,
+} from '@core';
 
-export type { GitSyncResult, GitPullResult } from '../../core/collection-git-sync';
+export type { GitSyncResult, GitPullResult } from '@core';
 
 export interface ElectronAPI {
   // HTTP requests
@@ -36,6 +44,8 @@ export interface ElectronAPI {
   // OpenAPI 3 import/export
   importOpenAPI3: () => Promise<CollectionNode[]>;
   exportOpenAPI3: (collectionIds?: string[]) => Promise<void>;
+  // Postman collection import
+  importPostman: () => Promise<CollectionNode[]>;
 }
 
 declare global {

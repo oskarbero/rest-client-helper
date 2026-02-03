@@ -85,3 +85,10 @@ export function deepEqual(obj1: any, obj2: any): boolean {
   
   return true;
 }
+
+/**
+ * Generates a unique ID for a node
+ */
+export function generateId(): string {
+  return `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}

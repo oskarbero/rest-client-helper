@@ -1,4 +1,4 @@
-import { CollectionNode } from './types';
+import { CollectionNode } from '../types';
 
 /**
  * Represents a group in the path-based hierarchy

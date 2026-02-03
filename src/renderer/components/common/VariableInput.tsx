@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { Environment, EnvironmentVariable } from '../../../core/types';
+import { Environment, EnvironmentVariable } from '@core';
 
 interface VariableInputProps {
   value: string;

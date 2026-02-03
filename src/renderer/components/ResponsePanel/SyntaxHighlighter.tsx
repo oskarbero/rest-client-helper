@@ -1,5 +1,5 @@
 import React from 'react';
-import { Token, tokenizeJson, detectContentType, formatJson, formatXml } from '../../../core/response-parser';
+import { Token, tokenizeJson, detectContentType, formatJson, formatXml } from '@core';
 
 interface SyntaxHighlighterProps {
   content: string;

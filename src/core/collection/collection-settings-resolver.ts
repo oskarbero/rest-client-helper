@@ -1,4 +1,4 @@
-import { CollectionNode, CollectionSettings } from './types';
+import { CollectionNode, CollectionSettings } from '../types';
 
 /**
  * Finds the path of ancestor collection IDs from root to the parent of the given node

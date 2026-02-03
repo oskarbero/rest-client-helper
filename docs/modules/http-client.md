@@ -1,15 +1,21 @@
 # HTTP Client Module
 
+## Location
+
+`src/core/http/http-client.ts`
+
 ## Purpose
 
 The `http-client` module is responsible for executing HTTP requests and returning formatted responses. It handles URL construction, header management, body preparation, and response parsing.
 
 ## Key Concepts
 
+- **Injectable Fetch**: Uses `getFetch()` from fetch-provider — no direct Electron dependency
 - **Request Building**: Constructs complete HTTP requests from `HttpRequest` objects
 - **Query Parameter Handling**: Merges query parameters and auth query params into URLs
 - **Header Merging**: Combines user headers with auth headers (user headers take precedence)
 - **Body Management**: Sets appropriate Content-Type headers based on body type
+- **Proxy Support**: Logs proxy environment variables; actual proxy handling depends on injected fetch
 - **Error Handling**: Returns error responses with status 0 for network/validation errors
 - **Response Parsing**: Extracts status, headers, body, content type, duration, and size
 
@@ -25,13 +31,21 @@ Sends an HTTP request and returns the response.
 
 **Returns:** Promise resolving to `HttpResponse` object
 
+**Prerequisites:**
+- Call `setFetch()` at application startup to register a fetch implementation
+- If no fetch is registered, falls back to `globalThis.fetch`
+
 **Example:**
 ```typescript
-import { sendRequest } from './http-client';
-import { createEmptyRequest } from './types';
+import { sendRequest, setFetch } from '@core';
 
+// Register fetch at startup (e.g., in Electron main process)
+setFetch(net.fetch.bind(net) as typeof globalThis.fetch);
+
+// Later, send requests
 const request = {
-  ...createEmptyRequest(),
+  id: '1',
+  name: 'Get Users',
   url: 'https://api.example.com/users',
   method: 'GET',
   headers: [
@@ -39,7 +53,9 @@ const request = {
   ],
   queryParams: [
     { key: 'page', value: '1', enabled: true }
-  ]
+  ],
+  body: { type: 'none', content: '' },
+  auth: { type: 'none' }
 };
 
 const response = await sendRequest(request);
@@ -49,6 +65,7 @@ console.log(response.body); // Response body as string
 
 ## Dependencies
 
+- `fetch-provider.ts` - getFetch() for fetch injection
 - `types.ts` - HttpRequest, HttpResponse, KeyValuePair types
 - `auth-handler.ts` - generateAuthHeaders, generateAuthQueryParam
 - `constants.ts` - CONFIG for timeout and size limits
@@ -80,6 +97,7 @@ console.log(response.body); // Response body as string
 
 ## Related Modules
 
+- [fetch-provider.md](./fetch-provider.md) - Injectable fetch abstraction
 - [auth-handler.md](./auth-handler.md) - Authentication handling
 - [variable-replacer.md](./variable-replacer.md) - Variable replacement (used before sending)
 - [response-parser.md](./response-parser.md) - Response formatting (used after receiving)

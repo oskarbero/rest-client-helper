@@ -1,5 +1,5 @@
 import React from 'react';
-import { KeyValuePair, Environment } from '../../../core/types';
+import { KeyValuePair, Environment } from '@core';
 import { KeyValueEditor } from '../common/KeyValueEditor';
 
 interface HeadersTabProps {

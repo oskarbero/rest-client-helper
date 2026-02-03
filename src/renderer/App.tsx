@@ -6,12 +6,27 @@ import { ResponseViewer } from './components/ResponsePanel/ResponseViewer';
 import { Collections } from './components/Sidebar/Collections';
 import { EnvironmentEditor } from './components/EnvironmentEditor/EnvironmentEditor';
 import { CollectionSettingsEditor } from './components/CollectionSettings/CollectionSettingsEditor';
-import { HttpRequest, HttpResponse, HttpMethod, CollectionNode, RecentRequest, Environment, EnvironmentVariable, CollectionSettings, createEmptyRequest } from '../core/types';
-import { resolveRequestVariables, resolveRequestWithCollectionSettings, replaceVariables } from '../core/variable-replacer';
-import { resolveCollectionSettings, findParentCollectionId, getAncestorPath } from '../core/collection-settings-resolver';
-import type { LoadedAppState } from '../core/state-persistence';
-import { CONFIG } from '../core/constants';
-import { deepEqual, findNodeById } from '../core/utils';
+import {
+  HttpRequest,
+  HttpResponse,
+  HttpMethod,
+  CollectionNode,
+  RecentRequest,
+  Environment,
+  EnvironmentVariable,
+  CollectionSettings,
+  createEmptyRequest,
+  resolveRequestVariables,
+  resolveRequestWithCollectionSettings,
+  replaceVariables,
+  resolveCollectionSettings,
+  findParentCollectionId,
+  getAncestorPath,
+  CONFIG,
+  deepEqual,
+  findNodeById,
+} from '@core';
+import type { LoadedAppState } from '@core';
 
 // Toast notification type
 interface Toast {
@@ -489,6 +504,21 @@ function App() {
     }
   }, [showToast]);
 
+  const handleImportPostman = useCallback(async () => {
+    try {
+      const importedNodes = await window.electronAPI.importPostman();
+      const collections = await window.electronAPI.getCollectionsTree();
+      setCollectionsTree(collections);
+      if (importedNodes.length > 0) {
+        showToast(`Imported ${importedNodes.length} collection(s) from Postman`, 'success');
+      }
+    } catch (error) {
+      console.error('Failed to import Postman:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import Postman';
+      showToast(errorMessage, 'error');
+    }
+  }, [showToast]);
+
   const handleExportOpenAPI3 = useCallback(async (collectionIds?: string[]) => {
     try {
       await window.electronAPI.exportOpenAPI3(collectionIds);
@@ -917,6 +947,7 @@ function App() {
                 onSaveFormTriggered={() => setTriggerSaveForm(false)}
                 hasUnsavedChanges={hasUnsavedChanges}
                 onImportOpenAPI3={handleImportOpenAPI3}
+                onImportPostman={handleImportPostman}
                 onExportOpenAPI3={handleExportOpenAPI3}
                 environments={environments}
                 activeEnvironmentId={activeEnvironment?.id || null}

@@ -6,7 +6,7 @@
 import path from 'path';
 import fs from 'fs';
 import simpleGit, { SimpleGit, SimpleGitOptions } from 'simple-git';
-import { CollectionNode } from './types';
+import { CollectionNode } from '../types';
 
 export interface GitSyncResult {
   success: boolean;
