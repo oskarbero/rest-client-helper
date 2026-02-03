@@ -123,6 +123,30 @@ function isSameRepo(url1: string, url2: string): boolean {
 }
 
 /**
+ * Maps common Git error messages to user-friendly messages
+ * Returns null if no specific mapping is found
+ */
+function mapGitErrorToFriendlyMessage(errorMessage: string): string | null {
+  if (errorMessage.includes('Authentication failed') || errorMessage.includes('could not read Username')) {
+    return 'Authentication failed. Please check your Git credentials (ensure Git credential helper is configured or SSH keys are set up).';
+  }
+  
+  if (errorMessage.includes('Could not resolve host') || errorMessage.includes('unable to access')) {
+    return 'Network error: Unable to connect to the remote repository. Please check your internet connection.';
+  }
+  
+  if (errorMessage.includes('non-fast-forward') || errorMessage.includes('rejected')) {
+    return 'Push rejected: The remote has changes that are not in your local copy. Please pull changes first.';
+  }
+  
+  if (errorMessage.includes('Permission denied')) {
+    return 'Permission denied: You do not have write access to this repository.';
+  }
+  
+  return null;
+}
+
+/**
  * Gets or clones a repository to the cache directory
  * If the cache already exists with the same remote, performs a fetch instead
  */
@@ -285,37 +309,11 @@ export async function pushCollectionSubtree(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     // Map common Git errors to user-friendly messages
-    if (errorMessage.includes('Authentication failed') || errorMessage.includes('could not read Username')) {
-      return {
-        success: false,
-        message: 'Authentication failed. Please check your Git credentials (ensure Git credential helper is configured or SSH keys are set up).',
-      };
-    }
+    const friendlyMessage = mapGitErrorToFriendlyMessage(errorMessage);
     
-    if (errorMessage.includes('Could not resolve host') || errorMessage.includes('unable to access')) {
-      return {
-        success: false,
-        message: 'Network error: Unable to connect to the remote repository. Please check your internet connection.',
-      };
-    }
-    
-    if (errorMessage.includes('non-fast-forward') || errorMessage.includes('rejected')) {
-      return {
-        success: false,
-        message: 'Push rejected: The remote has changes that are not in your local copy. Please pull changes first.',
-      };
-    }
-    
-    if (errorMessage.includes('Permission denied')) {
-      return {
-        success: false,
-        message: 'Permission denied: You do not have write access to this repository.',
-      };
-    }
-
     return {
       success: false,
-      message: `Failed to sync: ${errorMessage}`,
+      message: friendlyMessage || `Failed to sync: ${errorMessage}`,
     };
   }
 }
@@ -435,23 +433,11 @@ export async function pullCollectionFromRemote(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     // Map common Git errors to user-friendly messages
-    if (errorMessage.includes('Authentication failed') || errorMessage.includes('could not read Username')) {
-      return {
-        success: false,
-        message: 'Authentication failed. Please check your Git credentials.',
-      };
-    }
+    const friendlyMessage = mapGitErrorToFriendlyMessage(errorMessage);
     
-    if (errorMessage.includes('Could not resolve host') || errorMessage.includes('unable to access')) {
-      return {
-        success: false,
-        message: 'Network error: Unable to connect to the remote repository.',
-      };
-    }
-
     return {
       success: false,
-      message: `Failed to pull from remote: ${errorMessage}`,
+      message: friendlyMessage || `Failed to pull from remote: ${errorMessage}`,
     };
   }
 }
