@@ -68,7 +68,7 @@ interface PostmanAuthBearer {
 interface PostmanAuthApikey {
   key?: string;
   value?: string;
-  in?: 'query' | 'header' | 'query';
+  in?: 'query' | 'header';
 }
 
 interface PostmanAuth {
